@@ -1,0 +1,31 @@
+# =======================================================
+# AGROSYNC CORE - GIT IGNORE BLACKLIST
+# Mencegah kebocoran memori RAM dan data sensitif ke Repositori
+# =======================================================
+
+# 1. Dependensi Node.js (Sangat Berat, Wajib Diabaikan)
+node_modules/
+agrosync-web/node_modules/
+agrosync-backend/node_modules/
+
+# 2. File Lingkungan Lokal (Variabel Sensitif/Password)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 3. Hasil Build Next.js (Sampah Kompilasi)
+agrosync-web/.next/
+agrosync-web/out/
+
+# 4. Folder Penyimpanan Biner (Jangan unggah ribuan gambar ke GitHub!)
+agrosync-backend/uploads/
+Agrosync_Curated_Dataset/
+
+# 5. Sampah Log Sistem Operasi
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+Thumbs.db
