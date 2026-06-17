@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Download, ChevronLeft, ChevronRight, BarChart2, Calendar, ShieldAlert, Thermometer, Droplets, Wind } from 'lucide-react';
 
-const SERVER_URL = 'https://api.analyzer.web.id';
+const SERVER_URL = 'https://api-agrosync.analyzer.web.id';
 
 // Struktur Data TypeScript untuk Integritas Variabel
 interface TelemetryRow {

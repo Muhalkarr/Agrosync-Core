@@ -6,7 +6,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Thermometer, Droplets, Wind, Camera, AlertTriangle, CheckCircle, Activity, XCircle } from 'lucide-react';
 
 // Alamat IP Absolut Komputer Peladen Node.js Anda
-const SERVER_URL = 'https://api.analyzer.web.id';;
+const SERVER_URL = 'https://api-agrosync.analyzer.web.id';
 
 export default function AgrosyncDashboard() {
   // --- MANAJEMEN STATUS (STATE) ---

@@ -12,7 +12,7 @@ const path = require('path');
 const cors = require('cors');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // --- MANAJEMEN STATUS GLOBAL DI RAM (Ultra-Low Latency) ---
 // Menyimpan kecerahan agar tidak perlu membaca database terus menerus
@@ -51,9 +51,12 @@ const db = mysql.createPool({
 
 // 1. Injeksi CORS (Mengizinkan Akses Lintas Jaringan / Ponsel)
 app.use(cors({
-    origin: '*', 
+    origin: [
+        '*', // Sementara gunakan asterisk (*) sampai sistem stabil, lalu ganti dengan domain Anda
+        'https://agrosync.analyzer.web.id'
+    ],
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization'] // GUNAKAN KURUNG SIKU []
+    allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // 2. Parser JSON untuk menerima data payload (seperti nilai kecerahan)
