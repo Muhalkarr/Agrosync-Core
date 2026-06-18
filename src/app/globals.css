@@ -1,36 +1,8 @@
-@import "tailwindcss"; /* Dihapus: @tailwind base; karena kita menggunakan @import "tailwindcss/preflight" untuk Tailwind v4 */
-/* @import "tailwindcss/preflight";  */
-/* Tambahkan ini untuk memastikan reset CSS Tailwind tetap berfungsi dengan baik */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-:root { /* Variabel CSS untuk tema terang, dapat dengan mudah diubah untuk mendukung tema gelap atau tema lainnya di masa depan *\/ */
-  --background: #ffffff; /* Warna latar belakang utama untuk mode terang */
-  --foreground: #171717; /* Warna teks utama untuk mode terang */
-  --font-geist-sans: 'Geist Sans', sans-serif; /* Font utama */
-  --font-geist-mono: 'Geist Mono', monospace; /* Font monospace untuk elemen kode */
+body {
+  font-family: Arial, Helvetica, sans-serif; /* Ganti dengan font yang dikehendaki*/
 }
-
-@theme inline { /* Variabel tema untuk digunakan di seluruh aplikasi, memungkinkan perubahan tema yang mudah di masa depan *\/ */
-  --color-background: var(--background); /* Warna latar belakang utama */
-  --color-foreground: var(--foreground); /* Warna teks utama */
-  --font-sans: var(--font-geist-sans); /* Font utama */
-  --font-mono: var(--font-geist-mono); /* Font monospace untuk elemen kode */
-}
-
-@media (prefers-color-scheme: dark) { /* Variabel CSS untuk tema gelap, akan otomatis diterapkan jika pengguna memiliki preferensi tema gelap di sistem mereka *\/ */
-  :root { /* Override variabel untuk tema gelap *\/ */
-    --background: #0a0a0a; /* Warna latar belakang utama untuk mode gelap */
-    --foreground: #ededed; /* Warna teks utama untuk mode gelap */
-  }
-}
-
-body { /* Gaya global untuk seluruh aplikasi, menggunakan variabel tema untuk warna dan font *\/ */
-  background: var(--background); /* Warna latar belakang utama */
-  color: var(--foreground);  /* Warna teks utama */
-  font-family: Arial, Helvetica, sans-serif; /* Ganti dengan font yang Anda inginkan */
-}
-
-/* @tailwind base; removed: use @import "tailwindcss/preflight" for Tailwind v4 */
-/* @tailwind components; di hapus karena tidak ada komponen Tailwind khusus yang digunakan, dan untuk menghindari konflik dengan gaya kustom */
-@tailwind utilities; /* Tetap gunakan utilitas Tailwind untuk kemudahan styling di seluruh aplikasi */
-
 

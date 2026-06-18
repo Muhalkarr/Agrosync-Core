@@ -3,7 +3,7 @@ import os
 import shutil
 from dotenv import load_dotenv
 
-load_dotenv() # Memuat variabel dari file .env
+load_dotenv(dotenv_path='.env.local') # Memuat variabel dari file .env.local agar konsisten
 
 # ==============================================================================
 # AGROSYNC DATASET EXTRACTOR (PYTHON CORE)
@@ -11,9 +11,9 @@ load_dotenv() # Memuat variabel dari file .env
 # ==============================================================================
 
 # 1. Konfigurasi Path (Dibuat Relatif dan Fleksibel)
-# Asumsi: skrip ini ada di root 'Agrosync-Core', dan folder uploads ada di dalam 'Agrosync-Core/uploads'
+# Asumsi: skrip ini ada di root 'Agrosync-Core', dan folder uploads ada di dalam 'Agrosync-Core/public/uploads'
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-BACKEND_UPLOAD_DIR = os.path.join(SCRIPT_DIR, "uploads")
+BACKEND_UPLOAD_DIR = os.path.join(SCRIPT_DIR, "public", "uploads")
 EXPORT_DIR = "./Agrosync_Curated_Dataset"
 
 def main():
@@ -22,10 +22,10 @@ def main():
     # 2. Koneksi ke MySQL Database Lokal (Menggunakan Environment Variables)
     try:
         db = mysql.connector.connect(
-            host=os.getenv("DB_HOST", "localhost"),
-            user=os.getenv("DB_USER", "root"),
-            password=os.getenv("DB_PASSWORD", ""),
-            database=os.getenv("DB_NAME", "agrosync_db")
+            host=os.getenv("DB_HOST"),
+            user=os.getenv("DB_USER"),
+            password=os.getenv("DB_PASSWORD"),
+            database=os.getenv("DB_NAME")
         )
         cursor = db.cursor()
     except Exception as e:
