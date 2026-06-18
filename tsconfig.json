@@ -38,7 +38,7 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts",
     "next.config.js"
-  ],
+, "src/lib/db.js"  ],
   "exclude": [
     "node_modules"
   ]

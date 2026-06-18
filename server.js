@@ -12,6 +12,7 @@ const path = require('path');
 const cors = require('cors');
 
 const app = express();
+require('dotenv').config();
 const PORT = process.env.PORT || 3000;
 
 // --- MANAJEMEN STATUS GLOBAL DI RAM (Ultra-Low Latency) ---
@@ -185,8 +186,7 @@ app.get('/api/vision/latest', async(req, res) => {
         const [rows] = await db.execute('SELECT * FROM visi_edge ORDER BY waktu_tangkap DESC LIMIT 1');
         if (rows.length > 0) {
             const data = rows[0];
-            // Merakit URL gambar menggunakan IP Peladen Anda
-            data.image_url = `http://22.3.3.26:3000${data.file_path}`;
+            data.image_url = data.file_path;
             res.status(200).json(data);
         } else {
             res.status(404).json({ message: "Belum ada gambar" });
