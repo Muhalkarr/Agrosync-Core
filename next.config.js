@@ -1,20 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // 3. INSTRUKSI MUTLAK CPANEL: Bekukan aplikasi menjadi HTML Statis
-  output: 'export',
-
-  // 1. Matikan optimasi gambar bawaan Next.js. cPanel tidak mendukung pemrosesan gambar dinamis.
-  images: {
-    unoptimized: true,
-  },
-
-  // 2. Bypass benturan versi TypeScript dan ESLint dengan Node.js v23
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+  // Konfigurasi Next.js yang bersih untuk Vercel.
+  // Optimasi gambar akan aktif secara otomatis.
+  // Error build akan ditampilkan untuk memastikan kualitas kode.
 };
 
 module.exports = nextConfig;

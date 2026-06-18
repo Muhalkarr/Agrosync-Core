@@ -9,12 +9,6 @@ export async function GET(req: NextRequest) {
         if (rows.length > 0) {
             const data = rows[0];
             
-            // Bangun URL lengkap sama seperti di /archive
-            const host = req.headers.get('host');
-            const protocol = req.headers.get('x-forwarded-proto') || 'http';
-            const baseUrl = `${protocol}://${host}`;
-            data.image_url = `${baseUrl}${data.file_path}`;
-
             return NextResponse.json(data, {
                 status: 200,
                 headers: { 'Cache-Control': 'no-store, max-age=0' }

@@ -24,35 +24,34 @@ Sistem ini tidak akan berjalan tanpa struktur tabel yang valid.
 4. Pastikan Anda mengeksekusi skema tabel untuk tabel `mikroklimat`, `visi_edge`, dan `command_queue` sesuai arsitektur IoT.
 
 ### FASE 2: Inisiasi Peladen (Backend Engine)
-Setelah migrasi ke Next.js API Routes, backend dan frontend kini berjalan dalam satu proses yang sama, menyederhanakan instalasi secara signifikan.
+Setelah migrasi ke Next.js API Routes, backend dan frontend kini berjalan dalam satu proses yang sama, menyederhanakan instalasi secara signifikan. Proyek ini siap untuk di-hosting di platform modern seperti Vercel.
 
 1. Buka terminal (CMD/GitBash).
 2. Navigasi ke direktori root proyek: `cd Agrosync-Core`
 3. Instal seluruh dependensi: `npm install`
 4. **KONFIGURASI WAJIB (Database & API):**
-   - Buat file baru bernama `.env.local` di direktori root. File ini akan digunakan oleh Next.js untuk backend API dan frontend.
+   - Salin file `.env.example` menjadi file baru bernama `.env.local`.
    - Salin dan tempel konten berikut ke dalamnya, sesuaikan dengan konfigurasi MySQL Anda:
      ```
-     # Konfigurasi Database (untuk Backend API)
+     # Konfigurasi Database (untuk API Routes)
      DB_HOST=localhost
      DB_USER=root
      DB_PASSWORD=
      DB_NAME=agrosync_db
 
-     # URL API (untuk Frontend)
+     # URL API (untuk Frontend saat pengembangan lokal)
      NEXT_PUBLIC_API_URL=http://localhost:3000
      ```
 5. **Jalankan Proyek (Backend & Frontend):**
-   - Cukup jalankan perintah berikut. Next.js akan secara otomatis menangani API dan antarmuka pengguna.
      ```bash
      npm run dev
      ```
-   - *(Akses dasbor melalui peramban web di `http://localhost:3000`)*.
+   - *(Akses dasbor melalui peramban web di `http://localhost:3000`)*
 
 ### FASE 3: Ekstraksi Anotasi Dataset (Python Core)
 Skrip jembatan antara kurasi manusia di Dasbor menuju format MLOps (YOLOv8).
 1. Buka terminal (CMD/GitBash).
-2. Pastikan dependensi Python terpasang: `pip install mysql-connector-python python-dotenv`
+2. Pastikan dependensi Python terpasang: `pip install mysql-connector-python python-dotenv requests`
 3. Pastikan file `.env.local` dari FASE 2 sudah dibuat. Skrip akan otomatis membaca kredensial dari sana.
 4. Eksekusi program dari direktori root: `python extractor.py`
 

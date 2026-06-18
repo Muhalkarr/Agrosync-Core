@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image'; // <-- Impor komponen Image
 import { ChevronLeft, ChevronRight, Filter, Grid, Tag, Sliders, AlertCircle } from 'lucide-react';
 
 const SERVER_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
@@ -135,11 +136,13 @@ export default function VisionArchivePage() {
               
               {/* AREA FOTO JPEG DARI SERVER */}
               <div className="bg-black aspect-video relative overflow-hidden border-b border-slate-800">
-                <img 
+                <Image 
                   src={img.image_url} 
                   alt="Citra Perangkap" 
+                  fill // <-- Gunakan 'fill' untuk mengisi div parent
                   className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  loading="lazy" // Optimasi peramban agar tidak menguras kuota memori sebelum di-scroll
+                  sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                  priority={images.indexOf(img) < 4} // Prioritaskan pemuatan 4 gambar pertama
                 />
                 
                 {/* LENCANA STATUS LABEL AKTIF */}

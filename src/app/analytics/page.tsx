@@ -35,12 +35,15 @@ export default function AnalyticsPage() {
   const fetchAllData = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${SERVER_URL}/api/telemetry/all`);
-      if (res.ok) {
-        const data: TelemetryRow[] = await res.json();
-        setAllData(data);
-        kalkulasiStatistik(data);
-      }
+      // Ambil data tabel dan data statistik secara paralel
+      const [resAll, resStats] = await Promise.all([
+        fetch(`${SERVER_URL}/api/telemetry/all`),
+        fetch(`${SERVER_URL}/api/telemetry/stats`)
+      ]);
+
+      if (resAll.ok) setAllData(await resAll.json());
+      if (resStats.ok) setStats(await resStats.json());
+
     } catch (error) {
       console.error("Gagal menarik data gudang dari server lokal:", error);
     } finally {
@@ -51,33 +54,6 @@ export default function AnalyticsPage() {
   useEffect(() => {
     fetchAllData();
   }, []);
-
-  // --- LOGIKA AGREGASI MATEMATIS (DATA CALCULUS) ---
-  const kalkulasiStatistik = (data: TelemetryRow[]) => {
-    if (data.length === 0) return;
-
-    let maxT = -999;
-    let sumH = 0;
-    let sumW = 0;
-    let alerts = 0;
-
-    data.forEach(row => {
-      // 1. Cari Nilai Ekstrem (Maksimum) Suhu
-      if (Number(row.suhu) > maxT) maxT = Number(row.suhu);
-      // 2. Akumulasi untuk Rata-Rata
-      sumH += Number(row.kelembaban);
-      sumW += Number(row.kecepatan_angin);
-      // 3. Hitung Total Frekuensi Serangan Hama
-      if (row.status_alert === 1) alerts++;
-    });
-
-    setStats({
-      maxSuhu: maxT === -999 ? 0 : maxT,
-      avgKelembaban: Math.round(sumH / data.length),
-      avgAngin: parseFloat((sumW / data.length).toFixed(1)),
-      totalAlerts: alerts
-    });
-  };
 
   // --- KONTROL PAGINASI (SLICING ARRAY MEMORI) ---
   const indexOfLastRow = currentPage * rowsPerPage;

@@ -1,8 +1,7 @@
 // File: src/app/api/vision/upload/route.ts
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
-import fs from 'fs/promises';
-import path from 'path';
+import { put } from '@vercel/blob'; // <-- Impor fungsi 'put' dari Vercel Blob
 
 export async function POST(req: Request) {
     try {
@@ -11,23 +10,26 @@ export async function POST(req: Request) {
         if (!imageBuffer || imageBuffer.length === 0) {
             return new NextResponse('EMPTY_PAYLOAD', { status: 400 });
         }
-        // Validasi sederhana untuk file JPEG
         if (imageBuffer[0] !== 0xFF || imageBuffer[1] !== 0xD8 || imageBuffer[2] !== 0xFF) {
             return new NextResponse('CORRUPTED_FILE', { status: 400 });
         }
 
         const timestamp = Date.now();
         const filename = `edge_vision_${timestamp}.jpg`;
-        // Simpan di dalam folder `public/uploads` agar bisa diakses langsung
-        const uploadDir = path.join(process.cwd(), 'public', 'uploads');
-        await fs.mkdir(uploadDir, { recursive: true }); // Buat folder jika belum ada
-        const filepath = path.join(uploadDir, filename);
         const fileSizeKb = Math.round(imageBuffer.length / 1024);
 
-        await fs.writeFile(filepath, imageBuffer);
-        console.log(`[API ROUTE] File ${filename} (${fileSizeKb} KB) disimpan.`);
+        // --- LOGIKA BARU: Unggah ke Vercel Blob ---
+        const blob = await put(filename, imageBuffer, {
+            access: 'public', // Jadikan file dapat diakses secara publik
+            contentType: 'image/jpeg',
+        });
+        // `blob.url` akan berisi URL publik yang permanen
+        // -----------------------------------------
 
-        await db.execute('INSERT INTO visi_edge (file_path, file_size_kb) VALUES (?, ?)', [`/uploads/${filename}`, fileSizeKb]);
+        console.log(`[API ROUTE] File ${filename} (${fileSizeKb} KB) diunggah ke Vercel Blob.`);
+
+        // Simpan URL permanen dari Vercel Blob, bukan path lokal
+        await db.execute('INSERT INTO visi_edge (file_path, file_size_kb, image_url) VALUES (?, ?, ?)', [filename, fileSizeKb, blob.url]);
 
         return new NextResponse('IMAGE_SAVED', { status: 200 });
     } catch (error: any) {

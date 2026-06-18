@@ -25,21 +25,12 @@ export async function GET(req: NextRequest) {
         
         const [rows] = await db.query(dataQuery, [...queryParams, limit, offset]);
         const [countRows]: any = await db.query(countQuery, queryParams);
-        
-        const host = req.headers.get('host');
-        const protocol = req.headers.get('x-forwarded-proto') || 'http';
-        const baseUrl = `${protocol}://${host}`;
 
         const totalItems = countRows[0].total;
         const totalPages = Math.ceil(totalItems / limit);
 
-        const formattedRows = (rows as any[]).map(row => ({
-            ...row,
-            image_url: `${baseUrl}${row.file_path}`
-        }));
-
         return NextResponse.json({
-            images: formattedRows,
+            images: rows, // Langsung kirim rows, karena image_url sudah benar dari DB
             pagination: {
                 current_page: page,
                 total_pages: totalPages,

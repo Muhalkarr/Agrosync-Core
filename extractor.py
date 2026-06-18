@@ -1,6 +1,7 @@
 import mysql.connector
 import os
 import shutil
+import requests # <-- Tambahkan library untuk permintaan HTTP
 from dotenv import load_dotenv
 
 load_dotenv(dotenv_path='.env.local') # Memuat variabel dari file .env.local agar konsisten
@@ -8,12 +9,6 @@ load_dotenv(dotenv_path='.env.local') # Memuat variabel dari file .env.local aga
 # ==============================================================================
 # AGROSYNC DATASET EXTRACTOR (PYTHON CORE)
 # Fungsi: Menyalin citra yang telah dikurasi manusia dari Node.js ke folder AI
-# ==============================================================================
-
-# 1. Konfigurasi Path (Dibuat Relatif dan Fleksibel)
-# Asumsi: skrip ini ada di root 'Agrosync-Core', dan folder uploads ada di dalam 'Agrosync-Core/public/uploads'
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-BACKEND_UPLOAD_DIR = os.path.join(SCRIPT_DIR, "public", "uploads")
 EXPORT_DIR = "./Agrosync_Curated_Dataset"
 
 def main():
@@ -37,7 +32,7 @@ def main():
     os.makedirs(f"{EXPORT_DIR}/NORMAL", exist_ok=True)
 
     # 3. Kueri Ekstraksi Selektif (Hanya ambil yang valid)
-    query = "SELECT id, file_path, manual_label FROM visi_edge WHERE manual_label IN ('HAMA', 'NORMAL')"
+    query = "SELECT id, file_path, manual_label, image_url FROM visi_edge WHERE manual_label IN ('HAMA', 'NORMAL') AND image_url IS NOT NULL"
     cursor.execute(query)
     rows = cursor.fetchall()
 
@@ -51,20 +46,22 @@ def main():
     print(f"[INFO] Ditemukan {len(rows)} citra terkurasi. Memulai penyalinan biner...")
 
     # 4. Loop Pemindahan Biner
-    for row_id, file_path, label in rows:
-        # file_path formatnya: /uploads/edge_vision_12345.jpg
-        # Hapus garis miring pertama agar path.join tidak kebingungan di Windows
-        clean_path = file_path.lstrip('/\\') # Menghapus baik '/' maupun '\'
-        src_path = os.path.join(BACKEND_UPLOAD_DIR, clean_path)
-        
+    for row_id, file_path, label, image_url in rows:
         file_name = os.path.basename(file_path)
         dst_path = os.path.join(EXPORT_DIR, label, f"id{row_id}_{file_name}")
 
         try:
-            shutil.copy2(src_path, dst_path)
-            sukses += 1
+            # --- LOGIKA BARU: Unduh gambar dari URL Vercel Blob ---
+            response = requests.get(image_url, stream=True)
+            if response.status_code == 200:
+                with open(dst_path, 'wb') as f:
+                    shutil.copyfileobj(response.raw, f)
+                sukses += 1
+            else:
+                print(f"[WARNING] Gagal mengunduh {file_name}: Status {response.status_code}")
+                gagal += 1
         except Exception as e:
-            print(f"[WARNING] Gagal menyalin {file_name}: File fisik tidak ditemukan di hard disk.")
+            print(f"[ERROR] Gagal memproses {file_name}: {e}")
             gagal += 1
 
     print("=====================================================")

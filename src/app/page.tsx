@@ -17,12 +17,11 @@ export default function AgrosyncDashboard() {
   const [ledBrightness, setLedBrightness] = useState(20); // <--- TAMBAHKAN INI
 
   // --- LOGIKA AKUISISI DATA TERINTEGRASI & VALIDASI HEARTBEAT ---
-  const fetchData = async () => {
+  const fetchLatestData = async () => {
     try {
-      // Jalankan semua fetch secara paralel untuk performa lebih baik
-      const [resLatest, resHistory, resVision] = await Promise.all([
+      // Polling hanya untuk data terbaru, bukan seluruh riwayat
+      const [resLatest, resVision] = await Promise.all([
         fetch(`${SERVER_URL}/api/telemetry/latest`),
-        fetch(`${SERVER_URL}/api/telemetry/all`),
         fetch(`${SERVER_URL}/api/vision/latest`)
       ]);
 
@@ -51,12 +50,6 @@ export default function AgrosyncDashboard() {
 
       } else {
         setSystemHealth('SERVER_OFFLINE'); // Server Node.js mati
-      }
-
-      // 2. Proses Seluruh Riwayat untuk Grafik
-      if (resHistory.ok) {
-        const dataHistory = await resHistory.json();
-        setFullHistory(dataHistory.reverse()); 
       }
 
       // 3. Proses Data Gambar Terbaru
@@ -128,9 +121,24 @@ useEffect(() => {
 
   // --- SIKLUS HIDUP KOMPONEN (POLLING) ---
   useEffect(() => {
-    fetchData(); // Tarik data saat pertama kali dimuat
-    const interval = setInterval(fetchData, 5000); // Tarik data baru setiap 5 detik
+    // Ambil data terbaru saat pertama kali dimuat
+    fetchLatestData(); 
+    // Atur interval untuk hanya mengambil data terbaru
+    const interval = setInterval(fetchLatestData, 5000); 
     return () => clearInterval(interval); // Bersihkan memori saat tab ditutup
+  }, []);
+
+  // --- SIKLUS HIDUP KOMPONEN (HANYA SEKALI UNTUK DATA HISTORIS) ---
+  useEffect(() => {
+    const fetchHistoryData = async () => {
+      try {
+        const res = await fetch(`${SERVER_URL}/api/telemetry/all`);
+        if (res.ok) setFullHistory((await res.json()).reverse());
+      } catch (error) {
+        console.error("Gagal mengambil data historis untuk grafik:", error);
+      }
+    };
+    fetchHistoryData();
   }, []);
 
   // --- LOGIKA EKSEKUSI INSPEKSI MANUAL ---
@@ -371,10 +379,12 @@ useEffect(() => {
             {/* RENDER GAMBAR JPEG DARI NODE.JS */}
             <div className="bg-black w-full aspect-video rounded-lg overflow-hidden border border-slate-700 relative mb-6">
               {visionData.image_url ? (
-                <img 
+                <Image 
                   src={visionData.image_url} 
                   alt="Tangkapan ESP32-CAM" 
-                  className="w-full h-full object-cover"
+                  width={1280} // Example width
+                  height={720} // Example height
+                  className="w-full h-full object-cover" // This will make it responsive
                 />
               ) : (
                 <div className="flex items-center justify-center h-full text-slate-600 font-mono text-sm">
