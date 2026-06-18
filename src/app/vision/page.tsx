@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Filter, Grid, Tag, Sliders, AlertCircle } from 'lucide-react';
 
-const SERVER_URL = 'https://api-agrosync.analyzer.web.id';
+const SERVER_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 interface ImageMetadata {
   id: number;

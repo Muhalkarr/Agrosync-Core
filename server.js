@@ -15,10 +15,6 @@ const app = express();
 require('dotenv').config();
 const PORT = process.env.PORT || 3000;
 
-// --- MANAJEMEN STATUS GLOBAL DI RAM (Ultra-Low Latency) ---
-// Menyimpan kecerahan agar tidak perlu membaca database terus menerus
-let currentFlashBrightness = 15;
-
 // --- FUNGSI FORMAT WAKTU ABSOLUT (WIB) ---
 const logTime = (message) => {
     const timeStr = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
@@ -33,10 +29,10 @@ if (!fs.existsSync(UPLOAD_DIR)) {
 
 // PILAR B: Optimasi Koneksi Database (Connection Pooling)
 const db = mysql.createPool({
-    host: 'localhost',
-    user: 'root',
-    password: '',
-    database: 'agrosync_db',
+    host: process.env.DB_HOST || 'localhost',
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'agrosync_db',
     waitForConnections: true,
     connectionLimit: 15,
     queueLimit: 0
@@ -53,8 +49,8 @@ const db = mysql.createPool({
 // 1. Injeksi CORS (Mengizinkan Akses Lintas Jaringan / Ponsel)
 app.use(cors({
     origin: [
-        '*', // Sementara gunakan asterisk (*) sampai sistem stabil, lalu ganti dengan domain Anda
-        'https://agrosync.analyzer.web.id'
+        process.env.FRONTEND_URL || 'http://localhost:3001',
+        'https://agrosync.analyzer.web.id' // Ganti dengan domain production Anda
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization']
@@ -253,12 +249,15 @@ app.get('/api/vision/archive', async (req, res) => {
         const [rows] = await db.query(dataQuery, [...queryParams, limit, offset]);
         const [countRows] = await db.query(countQuery, queryParams);
         
+        // Membuat base URL secara dinamis dari request
+        const baseUrl = `${req.protocol}://${req.get('host')}`;
+
         const totalItems = countRows[0].total;
         const totalPages = Math.ceil(totalItems / limit);
 
         const formattedRows = rows.map(row => ({
             ...row,
-            image_url: `http://22.3.3.26:3000${row.file_path}` // Pastikan IP ini sesuai dengan laptop, soalna local host euy....
+            image_url: `${baseUrl}${row.file_path}`
         }));
 
         res.status(200).json({

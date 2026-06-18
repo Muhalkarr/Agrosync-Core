@@ -1,27 +1,31 @@
 import mysql.connector
 import os
 import shutil
+from dotenv import load_dotenv
+
+load_dotenv() # Memuat variabel dari file .env
 
 # ==============================================================================
 # AGROSYNC DATASET EXTRACTOR (PYTHON CORE)
 # Fungsi: Menyalin citra yang telah dikurasi manusia dari Node.js ke folder AI
 # ==============================================================================
 
-# 1. Konfigurasi Path (SESUAIKAN DENGAN LOKASI FOLDER BACKEND ANDA)
-# Contoh jika folder agrosync-backend ada di C:/Arsitektur.../agrosync-backend
-BACKEND_UPLOAD_DIR = r"C:\Arsitektur_server_Nodejs_dan_skema_Database_MySQL\agrosync-backend"
+# 1. Konfigurasi Path (Dibuat Relatif dan Fleksibel)
+# Asumsi: skrip ini ada di root 'Agrosync-Core', dan folder uploads ada di dalam 'Agrosync-Core/uploads'
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+BACKEND_UPLOAD_DIR = os.path.join(SCRIPT_DIR, "uploads")
 EXPORT_DIR = "./Agrosync_Curated_Dataset"
 
 def main():
     print("[SYSTEM] Memulai Ekstraksi Dataset Agrosync...")
     
-    # 2. Koneksi ke MySQL Database Lokal
+    # 2. Koneksi ke MySQL Database Lokal (Menggunakan Environment Variables)
     try:
         db = mysql.connector.connect(
-            host="localhost",
-            user="root",
-            password="",
-            database="agrosync_db"
+            host=os.getenv("DB_HOST", "localhost"),
+            user=os.getenv("DB_USER", "root"),
+            password=os.getenv("DB_PASSWORD", ""),
+            database=os.getenv("DB_NAME", "agrosync_db")
         )
         cursor = db.cursor()
     except Exception as e:
@@ -50,7 +54,7 @@ def main():
     for row_id, file_path, label in rows:
         # file_path formatnya: /uploads/edge_vision_12345.jpg
         # Hapus garis miring pertama agar path.join tidak kebingungan di Windows
-        clean_path = file_path.lstrip('/') 
+        clean_path = file_path.lstrip('/\\') # Menghapus baik '/' maupun '\'
         src_path = os.path.join(BACKEND_UPLOAD_DIR, clean_path)
         
         file_name = os.path.basename(file_path)

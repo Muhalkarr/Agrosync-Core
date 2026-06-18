@@ -11,7 +11,6 @@ const SERVER_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 export default function AgrosyncDashboard() {
   // --- MANAJEMEN STATUS (STATE) ---
   const [latestData, setLatestData] = useState({ suhu: 0, kelembaban: 0, kecepatan_angin: 0, status_alert: 0 });
-  const [historyData, setHistoryData] = useState([]);
   const [visionData, setVisionData] = useState({ image_url: '', waktu_tangkap: '' });
   const [systemHealth, setSystemHealth] = useState('ONLINE');
   const [isCommanding, setIsCommanding] = useState(false);
@@ -20,13 +19,16 @@ export default function AgrosyncDashboard() {
   // --- LOGIKA AKUISISI DATA TERINTEGRASI & VALIDASI HEARTBEAT ---
   const fetchData = async () => {
     try {
-      // 1. Tarik Data Telemetri Utama (LATEST) & Validasi Heartbeat
-      const resLatest = await fetch(`${SERVER_URL}/api/telemetry/latest`);
-      
+      // Jalankan semua fetch secara paralel untuk performa lebih baik
+      const [resLatest, resHistory, resVision] = await Promise.all([
+        fetch(`${SERVER_URL}/api/telemetry/latest`),
+        fetch(`${SERVER_URL}/api/telemetry/all`),
+        fetch(`${SERVER_URL}/api/vision/latest`)
+      ]);
+
+      // 1. Proses Data Telemetri Terbaru (LATEST) & Validasi Heartbeat
       if (resLatest.ok) {
         const dataLatest = await resLatest.json();
-        
-        // PARSING KETAT: Mencegah NaN pada React State
         setLatestData({
           suhu: parseFloat(dataLatest.suhu),
           kelembaban: parseFloat(dataLatest.kelembaban),
@@ -34,9 +36,6 @@ export default function AgrosyncDashboard() {
           status_alert: parseInt(dataLatest.status_alert)
         });
 
-        // ====================================================================
-        // IMPLEMENTASI VALIDASI DETAK JANTUNG ALAT (TEMPORAL DELTA)
-        // ====================================================================
         const waktuTerakhirAlat = new Date(dataLatest.waktu_rekam).getTime();
         const waktuSaatIniKlien = Date.now();
         const selisihWaktums = waktuSaatIniKlien - waktuTerakhirAlat;
@@ -54,15 +53,13 @@ export default function AgrosyncDashboard() {
         setSystemHealth('SERVER_OFFLINE'); // Server Node.js mati
       }
 
-      // 2. Tarik Seluruh Riwayat untuk Grafik Dinamis (Temporal Slicing)
-      const resHistory = await fetch(`${SERVER_URL}/api/telemetry/all`);
+      // 2. Proses Seluruh Riwayat untuk Grafik
       if (resHistory.ok) {
         const dataHistory = await resHistory.json();
         setFullHistory(dataHistory.reverse()); 
       }
 
-      // 3. Tarik Data Gambar Terbaru (Vision Edge)
-      const resVision = await fetch(`${SERVER_URL}/api/vision/latest`);
+      // 3. Proses Data Gambar Terbaru
       if (resVision.ok) {
         const dataVision = await resVision.json();
         setVisionData(dataVision);
