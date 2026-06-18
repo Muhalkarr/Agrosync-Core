@@ -1,8 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Konfigurasi Next.js yang bersih untuk Vercel.
-  // Optimasi gambar akan aktif secara otomatis.
-  // Error build akan ditampilkan untuk memastikan kualitas kode.
+  // INSTRUKSI MUTLAK CPANEL: Bekukan aplikasi menjadi HTML Statis
+  output: 'export',
+
+  // Matikan optimasi gambar bawaan Next.js. cPanel tidak mendukung pemrosesan gambar dinamis.
+  images: {
+    unoptimized: true,
+  },
 };
 
 module.exports = nextConfig;

@@ -24,29 +24,32 @@ Sistem ini tidak akan berjalan tanpa struktur tabel yang valid.
 4. Pastikan Anda mengeksekusi skema tabel untuk tabel `mikroklimat`, `visi_edge`, dan `command_queue` sesuai arsitektur IoT.
 
 ### FASE 2: Inisiasi Peladen (Backend Engine)
-Setelah migrasi ke Next.js API Routes, backend dan frontend kini berjalan dalam satu proses yang sama, menyederhanakan instalasi secara signifikan. Proyek ini siap untuk di-hosting di platform modern seperti Vercel.
+Proyek ini menggunakan arsitektur hybrid yang dirancang untuk cPanel: backend Express.js dan frontend statis Next.js.
 
 1. Buka terminal (CMD/GitBash).
 2. Navigasi ke direktori root proyek: `cd Agrosync-Core`
 3. Instal seluruh dependensi: `npm install`
 4. **KONFIGURASI WAJIB (Database & API):**
    - Salin file `.env.example` menjadi file baru bernama `.env.local`.
-   - Salin dan tempel konten berikut ke dalamnya, sesuaikan dengan konfigurasi MySQL Anda:
+   - Sesuaikan isinya dengan konfigurasi MySQL dan port lokal Anda:
      ```
-     # Konfigurasi Database (untuk API Routes)
+     # Konfigurasi Database (untuk server.js)
      DB_HOST=localhost
      DB_USER=root
      DB_PASSWORD=
      DB_NAME=agrosync_db
 
-     # URL API (untuk Frontend saat pengembangan lokal)
-     NEXT_PUBLIC_API_URL=http://localhost:3000
+     # Port untuk API Server (Express) saat pengembangan lokal
+     API_PORT=3001
+     # URL API (Frontend akan memanggil backend di port ini saat pengembangan lokal).
+     # DI PRODUKSI (CPANEL), INI HARUS DIUBAH MENJADI URL APLIKASI NODE.JS ANDA.
+     NEXT_PUBLIC_API_URL=http://localhost:3001
      ```
-5. **Jalankan Proyek (Backend & Frontend):**
+5. **Jalankan Proyek Pengembangan (Backend & Frontend Secara Bersamaan):**
      ```bash
      npm run dev
      ```
-   - *(Akses dasbor melalui peramban web di `http://localhost:3000`)*
+   - *(Akses dasbor frontend di `http://localhost:3000` dan server API di `http://localhost:3001`)*
 
 ### FASE 3: Ekstraksi Anotasi Dataset (Python Core)
 Skrip jembatan antara kurasi manusia di Dasbor menuju format MLOps (YOLOv8).
@@ -59,6 +62,6 @@ Skrip jembatan antara kurasi manusia di Dasbor menuju format MLOps (YOLOv8).
 
 ## 🛑 DIAGNOSTIK MASALAH (Troubleshooting)
 
-* **Dasbor Tidak Memuat Data:** Pastikan proyek berjalan (`npm run dev`). Cek file `.env.local` dan pastikan `NEXT_PUBLIC_API_URL` sudah benar. Jika perangkat lain di jaringan (misal: ponsel) tidak bisa akses, pastikan Windows Defender Firewall Anda telah membuka port 3000 (Inbound Rules TCP).
+* **Dasbor Tidak Memuat Data:** Pastikan kedua server berjalan (`npm run dev`). Cek file `.env.local` dan pastikan `NEXT_PUBLIC_API_URL` menunjuk ke port yang benar (default: 3001).
 * **Galat `mysqld_stmt_execute`:** Gunakan XAMPP/MySQL versi stabil. Jika membandel, pastikan fungsi penarikan data masif menggunakan `db.query()` dan bukan `db.execute()`.
 * **Peringatan `Hydration Mismatch` (Next.js):** Peringatan zona waktu ini telah dimitigasi dengan `suppressHydrationWarning`.

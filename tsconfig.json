@@ -12,7 +12,6 @@
     "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",
-    "ignoreDeprecations": "6.0",
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
@@ -38,7 +37,8 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts",
     "next.config.js",
-    "src/lib/db.js"
+    "src/lib/db.js",
+    "server.js"
   ],
   "exclude": [
     "node_modules"
