@@ -5,8 +5,8 @@ import Image from 'next/image';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Brush } from 'recharts';
 import { Thermometer, Droplets, Wind, Camera, AlertTriangle, CheckCircle, Activity, XCircle } from 'lucide-react';
 
-// Alamat IP Absolut Komputer Peladen Node.js Anda
-const SERVER_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+// [PERBAIKAN] Gunakan variabel lingkungan untuk URL API. Di produksi, ini akan menjadi path relatif (misal: '/api').
+const SERVER_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 export default function AgrosyncDashboard() {
   // --- MANAJEMEN STATUS (STATE) ---
@@ -19,43 +19,50 @@ export default function AgrosyncDashboard() {
   // --- LOGIKA AKUISISI DATA TERINTEGRASI & VALIDASI HEARTBEAT ---
   const fetchLatestData = async () => {
     try {
-      // Polling hanya untuk data terbaru, bukan seluruh riwayat
       const [resLatest, resVision] = await Promise.all([
-        fetch(`${SERVER_URL}/api/telemetry/latest`),
-        fetch(`${SERVER_URL}/api/vision/latest`)
+        fetch(`${SERVER_URL}/telemetry/latest`),
+        fetch(`${SERVER_URL}/vision/latest`)
       ]);
 
       // 1. Proses Data Telemetri Terbaru (LATEST) & Validasi Heartbeat
       if (resLatest.ok) {
         const dataLatest = await resLatest.json();
-        setLatestData({
-          suhu: parseFloat(dataLatest.suhu),
-          kelembaban: parseFloat(dataLatest.kelembaban),
-          kecepatan_angin: parseFloat(dataLatest.kecepatan_angin),
-          status_alert: parseInt(dataLatest.status_alert)
-        });
+        if (dataLatest) {
+          setLatestData({
+            suhu: parseFloat(dataLatest.suhu),
+            kelembaban: parseFloat(dataLatest.kelembaban),
+            kecepatan_angin: parseFloat(dataLatest.kecepatan_angin),
+            status_alert: parseInt(dataLatest.status_alert)
+          });
 
-        const waktuTerakhirAlat = new Date(dataLatest.waktu_rekam).getTime();
-        const waktuSaatIniKlien = Date.now();
-        const selisihWaktums = waktuSaatIniKlien - waktuTerakhirAlat;
-        
-        // Batas Toleransi: 90.000 ms (1,5 Menit) 
-        const ambangBatasToleransi = 90000; 
+          const waktuTerakhirAlat = new Date(dataLatest.waktu_rekam).getTime();
+          const waktuSaatIniKlien = Date.now();
+          const selisihWaktums = waktuSaatIniKlien - waktuTerakhirAlat;
+          
+          // Batas Toleransi: 60.000 ms (1 Menit) + 5 detik buffer
+          const ambangBatasToleransi = 65000; 
 
-        if (selisihWaktums <= ambangBatasToleransi) {
-          setSystemHealth('ONLINE'); // Alat hidup & ngirim data
-        } else {
-          setSystemHealth('HARDWARE_OFFLINE'); // Server hidup, alat di kebun MATI
+          if (selisihWaktums <= ambangBatasToleransi) {
+            setSystemHealth('ONLINE'); // Alat hidup & ngirim data
+          } else {
+            setSystemHealth('HARDWARE_OFFLINE'); // Server hidup, alat di kebun MATI
+          }
         }
-
+      } else if (resLatest.status === 404) {
+        // Server merespons, tetapi tidak ada data. Ini berarti alat belum mengirim data.
+        setSystemHealth('HARDWARE_OFFLINE');
       } else {
-        setSystemHealth('SERVER_OFFLINE'); // Server Node.js mati
+        // Kesalahan lain (500, dll.) menunjukkan masalah pada server.
+        setSystemHealth('SERVER_OFFLINE');
       }
 
-      // 3. Proses Data Gambar Terbaru
+      // 2. Proses Data Gambar Terbaru
       if (resVision.ok) {
         const dataVision = await resVision.json();
         setVisionData(dataVision);
+      } else if (resVision.status === 404) {
+        // Jika tidak ada gambar, pastikan state-nya kosong.
+        setVisionData({ image_url: '', waktu_tangkap: '' });
       }
 
     } catch (error) {
@@ -94,8 +101,8 @@ useEffect(() => {
             // JIKA FILTER 1 MINGGU: Tampilkan Nama Hari + Jam (Contoh: Sen 14:00)
             timeString = `${dateObj.toLocaleDateString('id-ID', { weekday: 'short' })} ${dateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute:'2-digit' })}`;
         } else {
-            // JIKA FILTER > 1 MINGGU / MAX: Tampilkan Tanggal, Bulan, Jam (Contoh: 15/08 14:00)
-            timeString = `${dateObj.getDate()}/${dateObj.getMonth() + 1} ${dateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute:'2-digit' })}`;
+            // JIKA FILTER > 1 MINGGU / MAX: Tampilkan Tanggal, Bulan, Jam (Contoh: 15/08/2023 14:00)
+            timeString = `${dateObj.getDate()}/${dateObj.getMonth() + 1}/${dateObj.getFullYear()} ${dateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute:'2-digit' })}`;
         }
 
         return {
@@ -132,7 +139,7 @@ useEffect(() => {
   useEffect(() => {
     const fetchHistoryData = async () => {
       try {
-        const res = await fetch(`${SERVER_URL}/api/telemetry/all`);
+        const res = await fetch(`${SERVER_URL}/telemetry/all`);
         if (res.ok) setFullHistory((await res.json()).reverse());
       } catch (error) {
         console.error("Gagal mengambil data historis untuk grafik:", error);
@@ -145,7 +152,7 @@ useEffect(() => {
   const triggerManualInspection = async () => {
     setIsCommanding(true);
     try {
-      const res = await fetch(`${SERVER_URL}/api/command/trigger-camera`, {
+      const res = await fetch(`${SERVER_URL}/command/trigger-camera`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }, // <-- WAJIB ADA
         body: JSON.stringify({ kecerahan: ledBrightness }) // <-- BUNGKUS PAYLOAD
@@ -161,7 +168,7 @@ useEffect(() => {
 
   const syncBrightnessToServer = async (newVal: number) => {
     try {
-      await fetch(`${SERVER_URL}/api/command/brightness`, {
+      await fetch(`${SERVER_URL}/command/brightness`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ kecerahan: newVal })
@@ -172,13 +179,13 @@ useEffect(() => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 p-8 font-sans">
+    <div className="min-h-screen p-8 font-sans bg-slate-900 text-slate-100">
       
       {/* HEADER & SYSTEM HEALTH */}
-      <header className="flex justify-between items-center mb-8 border-b border-slate-700 pb-4">
+      <header className="flex items-center justify-between pb-4 mb-8 border-b border-slate-700">
         <div>
-          <h1 className="text-3xl font-bold text-emerald-400 tracking-tight">AGROSYNC COMMAND CENTER</h1>
-          <p className="text-slate-400 text-sm mt-1">Sistem Pemantauan Mikroklimat & Visi Edge Terdistribusi</p>
+          <h1 className="text-3xl font-bold tracking-tight text-emerald-400">AGROSYNC COMMAND CENTER</h1>
+          <p className="mt-1 text-sm text-slate-400">Sistem Pemantauan Mikroklimat & Visi Edge Terdistribusi</p>
         </div>
         
         {/* LENCANA INDIKATOR KONEKTIVITAS (3 STATUS DISKRET) */}
@@ -199,45 +206,45 @@ useEffect(() => {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         
         {/* KOLOM KIRI: WIDGET TELEMETRI & GRAFIK (2 Kolom di Layar Besar) */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="space-y-6 lg:col-span-2">
           
           {/* PANEL KARTU METRIK UTAMA */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 flex items-center justify-between shadow-lg">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="flex items-center justify-between p-6 border shadow-lg bg-slate-800 rounded-xl border-slate-700">
               <div>
-                <p className="text-slate-400 text-sm font-medium">Suhu Udara</p>
-                <p className="text-4xl font-bold text-white mt-1">{latestData.suhu}<span className="text-xl text-slate-500 ml-1">°C</span></p>
+                <p className="text-sm font-medium text-slate-400">Suhu Udara</p>
+                <p className="mt-1 text-4xl font-bold text-white">{latestData.suhu}<span className="ml-1 text-xl text-slate-500">°C</span></p>
               </div>
               <Thermometer className="w-12 h-12 text-rose-500 opacity-80" />
             </div>
             
-            <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 flex items-center justify-between shadow-lg">
+            <div className="flex items-center justify-between p-6 border shadow-lg bg-slate-800 rounded-xl border-slate-700">
               <div>
-                <p className="text-slate-400 text-sm font-medium">Kelembaban (RH)</p>
-                <p className="text-4xl font-bold text-white mt-1">{latestData.kelembaban}<span className="text-xl text-slate-500 ml-1">%</span></p>
+                <p className="text-sm font-medium text-slate-400">Kelembaban (RH)</p>
+                <p className="mt-1 text-4xl font-bold text-white">{latestData.kelembaban}<span className="ml-1 text-xl text-slate-500">%</span></p>
               </div>
               <Droplets className="w-12 h-12 text-blue-500 opacity-80" />
             </div>
 
-            <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 flex items-center justify-between shadow-lg">
+            <div className="flex items-center justify-between p-6 border shadow-lg bg-slate-800 rounded-xl border-slate-700">
               <div>
-                <p className="text-slate-400 text-sm font-medium">Kecepatan Angin</p>
-                <p className="text-4xl font-bold text-white mt-1">{latestData.kecepatan_angin}<span className="text-xl text-slate-500 ml-1">m/s</span></p>
+                <p className="text-sm font-medium text-slate-400">Kecepatan Angin</p>
+                <p className="mt-1 text-4xl font-bold text-white">{latestData.kecepatan_angin}<span className="ml-1 text-xl text-slate-500">m/s</span></p>
               </div>
               <Wind className="w-12 h-12 text-slate-400 opacity-80" />
             </div>
           </div>
 
           {/* PANEL GRAFIK HISTORIS (DATA SCIENCE VIEW)
-          <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg">
+          <div className="p-6 border shadow-lg bg-slate-800 rounded-xl border-slate-700">
             <div className="flex items-center mb-6">
-              <Activity className="w-5 h-5 text-emerald-400 mr-2" />
+              <Activity className="w-5 h-5 mr-2 text-emerald-400" />
               <h2 className="text-xl font-bold text-white">Fluktuasi Mikroklimat</h2>
             </div>
-            <div className="h-72 w-full">
+            <div className="w-full h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={historyData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
@@ -253,18 +260,18 @@ useEffect(() => {
           </div> */}
 
           {/* PANEL GRAFIK HISTORIS DINAMIS & SKALABEL */}
-          <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg">
+          <div className="p-6 border shadow-lg bg-slate-800 rounded-xl border-slate-700">
             
             {/* SUB-HEADER: Sakelar Sensor & Filter Waktu */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 border-b border-slate-700 pb-4">
+            <div className="flex flex-col items-start justify-between gap-4 pb-4 mb-6 border-b md:flex-row md:items-center border-slate-700">
               <div className="flex items-center">
-                <Activity className="w-5 h-5 text-emerald-400 mr-2" />
+                <Activity className="w-5 h-5 mr-2 text-emerald-400" />
                 <h2 className="text-xl font-bold text-white">Fluktuasi Mikroklimat</h2>
               </div>
               
-              <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
+              <div className="flex flex-wrap items-center justify-end w-full gap-3 md:w-auto">
                 {/* SAKELAR VISIBILITAS SENSOR */}
-                <div className="flex bg-slate-900 p-1 rounded-lg border border-slate-700 text-xs font-bold">
+                <div className="flex p-1 text-xs font-bold border rounded-lg bg-slate-900 border-slate-700">
                   <button 
                     onClick={() => setShowSuhu(!showSuhu)}
                     className={`px-3 py-1.5 rounded transition-all ${showSuhu ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'text-slate-500 hover:text-slate-300'}`}
@@ -293,7 +300,7 @@ useEffect(() => {
                       setBrushStartIndex(undefined);
                       setBrushEndIndex(undefined);
                     }}
-                    className="bg-slate-900 border border-slate-700 text-slate-300 text-xs font-bold rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500"
+                    className="px-3 py-2 text-xs font-bold border rounded-lg bg-slate-900 border-slate-700 text-slate-300 focus:outline-none focus:border-emerald-500"
                 >
                     <option value={1 * 60 * 60 * 1000}>1 Jam Terakhir</option>
                     <option value={4 * 60 * 60 * 1000}>4 Jam Terakhir</option>
@@ -357,49 +364,49 @@ useEffect(() => {
 
         {/* KOLOM KANAN: EDGE VISION & KONTROL MANUAL */}
         <div className="space-y-6">
-          <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg flex flex-col h-full">
+          <div className="flex flex-col h-full p-6 border shadow-lg bg-slate-800 rounded-xl border-slate-700">
             
-            <div className="flex justify-between items-start mb-4">
+            <div className="flex items-start justify-between mb-4">
               <div>
-                <h2 className="text-xl font-bold text-white flex items-center">
-                  <Camera className="w-5 h-5 text-emerald-400 mr-2" />
+                <h2 className="flex items-center text-xl font-bold text-white">
+                  <Camera className="w-5 h-5 mr-2 text-emerald-400" />
                   Visualisasi Perangkap
                 </h2>
-                <p className="text-slate-400 text-xs mt-1">
+                <p className="mt-1 text-xs text-slate-400">
                   Pembaruan Terakhir: {visionData.waktu_tangkap ? new Date(visionData.waktu_tangkap).toLocaleString('id-ID') : 'Belum ada data'}
                 </p>
               </div>
               {latestData.status_alert === 1 && (
-                <span className="px-3 py-1 bg-rose-500 text-white text-xs font-bold rounded-full animate-pulse">
+                <span className="px-3 py-1 text-xs font-bold text-white rounded-full bg-rose-500 animate-pulse">
                   HAMA MASUK
                 </span>
               )}
             </div>
 
             {/* RENDER GAMBAR JPEG DARI NODE.JS */}
-            <div className="bg-black w-full aspect-video rounded-lg overflow-hidden border border-slate-700 relative mb-6">
+            <div className="relative w-full mb-6 overflow-hidden bg-black border rounded-lg aspect-video border-slate-700">
               {visionData.image_url ? (
                 <Image 
                   src={visionData.image_url} 
-                  alt="Tangkapan ESP32-CAM" 
-                  width={1280} // Example width
-                  height={720} // Example height
-                  className="w-full h-full object-cover" // This will make it responsive
+                  alt="Tangkapan ESP32-CAM"
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 33vw"
+                  className="object-cover"
                 />
               ) : (
-                <div className="flex items-center justify-center h-full text-slate-600 font-mono text-sm">
+                <div className="flex items-center justify-center h-full font-mono text-sm text-slate-600">
                   TIDAK ADA SINYAL VIDEO
                 </div>
               )}
             </div>
 
           {/* KENDALI OPTIK (SLIDER KECERAHAN) */}
-            <div className="my-4 bg-slate-900 p-4 rounded-lg border border-slate-700">
-              <div className="flex justify-between items-center">
-                <label className="text-sm font-bold text-slate-400 uppercase tracking-wider">
+            <div className="p-4 my-4 border rounded-lg bg-slate-900 border-slate-700">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-bold tracking-wider uppercase text-slate-400">
                   Intensitas LED Flash
                 </label>
-                <span className="text-emerald-400 font-mono font-bold">{ledBrightness}/255</span>
+                <span className="font-mono font-bold text-emerald-400">{ledBrightness}/255</span>
               </div>
               <input 
                 type="range" 
@@ -409,29 +416,31 @@ useEffect(() => {
                 onChange={(e) => setLedBrightness(parseInt(e.target.value))}
                 onMouseUp={(e) => syncBrightnessToServer(parseInt((e.target as HTMLInputElement).value))}
                 onTouchEnd={(e) => syncBrightnessToServer(parseInt((e.target as HTMLInputElement).value))}
-                className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-slate-700 accent-emerald-500"
               />
-              <p className="text-xs text-slate-500 mt-2">
+              <p className="mt-2 text-xs text-slate-500">
                 Geser untuk menyesuaikan pencahayaan saat tombol inspeksi ditekan.
               </p>
             </div>
 
             {/* TOMBOL INSPEKSI PIGGYBACK POLLING */}
-            <button 
+            <button
               onClick={triggerManualInspection}
-              disabled={isCommanding || systemHealth === 'OFFLINE'}
-              className={`w-full py-1 rounded-lg font-bold transition-all shadow-lg flex items-center justify-center 
-                ${isCommanding || systemHealth === 'OFFLINE' 
-                  ? 'bg-slate-700 text-slate-500 cursor-not-allowed' 
-                  : 'bg-emerald-600 hover:bg-emerald-500 text-white hover:shadow-emerald-500/25 active:scale-[0.98]'}`}
+              disabled={isCommanding || systemHealth !== 'ONLINE'}
+              className={`w-full py-1 rounded-lg font-bold transition-all shadow-lg flex items-center justify-center ${
+                isCommanding || systemHealth !== 'ONLINE'
+                  ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                  : 'bg-emerald-600 hover:bg-emerald-500 text-white hover:shadow-emerald-500/25 active:scale-[0.98]'
+              }`}
             >
               {isCommanding ? 'MENGIRIM INSTRUKSI...' : 'INSPEKSI MANUAL (Potret Sekarang)'}
             </button>
 
+
             {/* ZONA PLACEHOLDER KECERDASAN BUATAN (YOLOv8) */}
-            <div className="mt-6 p-4 bg-slate-900 rounded-lg border border-slate-700">
-              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Diagnosis Edge AI (YOLOv8)</h3>
-              <p className="text-emerald-400 font-mono text-sm">STATUS: MENUNGGU MODEL PYTHON...</p>
+            <div className="p-4 mt-6 border rounded-lg bg-slate-900 border-slate-700">
+              <h3 className="mb-2 text-xs font-bold tracking-wider uppercase text-slate-500">Diagnosis Edge AI (YOLOv8)</h3>
+              <p className="font-mono text-sm text-emerald-400">STATUS: MENUNGGU MODEL PYTHON...</p>
             </div>
           </div>
         </div>

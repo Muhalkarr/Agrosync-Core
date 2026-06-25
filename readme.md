@@ -32,19 +32,26 @@ Proyek ini menggunakan arsitektur hybrid yang dirancang untuk cPanel: backend Ex
 4. **KONFIGURASI WAJIB (Database & API):**
    - Salin file `.env.example` menjadi file baru bernama `.env.local`.
    - Sesuaikan isinya dengan konfigurasi MySQL dan port lokal Anda:
-     ```
-     # Konfigurasi Database (untuk server.js)
+     ```dotenv
+     # ===================================
+     # CONTOH UNTUK PENGEMBANGAN LOKAL
+     # ===================================
+     # Konfigurasi Database (untuk server.js & extractor.py)
      DB_HOST=localhost
      DB_USER=root
      DB_PASSWORD=
      DB_NAME=agrosync_db
-
-     # Port untuk API Server (Express) saat pengembangan lokal
-     API_PORT=3001
-     # URL API (Frontend akan memanggil backend di port ini saat pengembangan lokal).
-     # DI PRODUKSI (CPANEL), INI HARUS DIUBAH MENJADI URL APLIKASI NODE.JS ANDA.
+ 
+     # URL untuk API & Frontend
      NEXT_PUBLIC_API_URL=http://localhost:3001
+     FRONTEND_URL=http://localhost:3000
+
+     # Kunci API untuk otentikasi perangkat keras (ESP32/NodeMCU)
+     # Buat string acak yang kuat untuk ini di produksi.
+     HARDWARE_API_KEY=kunci_rahasia_anda_disini
      ```
+   - **CATATAN PENTING UNTUK PRODUKSI (CPANEL):** Di lingkungan cPanel, variabel-variabel ini (terutama `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `FRONTEND_URL`, `NEXT_PUBLIC_API_URL`) harus diatur melalui menu **"Setup Node.js App" -> "Environment Variables"**, bukan dari file `.env.local`.
+
 5. **Jalankan Proyek Pengembangan (Backend & Frontend Secara Bersamaan):**
      ```bash
      npm run dev

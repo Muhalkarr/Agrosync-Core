@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { Download, ChevronLeft, ChevronRight, BarChart2, Calendar, ShieldAlert, Thermometer, Droplets, Wind } from 'lucide-react';
 
-const SERVER_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+// [PERBAIKAN] Gunakan variabel lingkungan untuk URL API. Di produksi, ini akan menjadi path relatif (misal: '/api').
+const SERVER_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 // Struktur Data TypeScript untuk Integritas Variabel
 interface TelemetryRow {
@@ -37,8 +38,8 @@ export default function AnalyticsPage() {
       setLoading(true);
       // Ambil data tabel dan data statistik secara paralel
       const [resAll, resStats] = await Promise.all([
-        fetch(`${SERVER_URL}/api/telemetry/all`),
-        fetch(`${SERVER_URL}/api/telemetry/stats`)
+        fetch(`${SERVER_URL}/telemetry/all`),
+        fetch(`${SERVER_URL}/telemetry/stats`)
       ]);
 
       if (resAll.ok) setAllData(await resAll.json());
@@ -97,13 +98,13 @@ export default function AnalyticsPage() {
   };
 
   return (
-    <div className="p-8 space-y-8 bg-slate-950 min-h-screen text-slate-100">
+    <div className="min-h-screen p-8 space-y-8 bg-slate-950 text-slate-100">
       
       {/* HEADER UTAMA */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-800 pb-6 gap-4">
+      <div className="flex flex-col items-start justify-between gap-4 pb-6 border-b md:flex-row md:items-center border-slate-800">
         <div>
-          <h1 className="text-3xl font-bold text-emerald-400 tracking-tight">ANALISIS EKSEKUTIF DATA</h1>
-          <p className="text-slate-400 text-sm mt-1">Gudang Data Historis & Ekstraksi Laporan Komprehensif (Ledger Sistem)</p>
+          <h1 className="text-3xl font-bold tracking-tight text-emerald-400">ANALISIS EKSEKUTIF DATA</h1>
+          <p className="mt-1 text-sm text-slate-400">Gudang Data Historis & Ekstraksi Laporan Komprehensif (Ledger Sistem)</p>
         </div>
         
         {/* TOMBOL UNDUH CSV UTAMA */}
@@ -118,47 +119,47 @@ export default function AnalyticsPage() {
       </div>
 
       {/* TIGA KARTU AGREGASI AGRO-STATISTIK */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-slate-900 p-5 rounded-xl border border-slate-800 flex items-center justify-between">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <div className="flex items-center justify-between p-5 border bg-slate-900 rounded-xl border-slate-800">
           <div>
-            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Suhu Tertinggi</p>
-            <p className="text-3xl font-extrabold text-white mt-1">{loading ? '...' : stats.maxSuhu}<span className="text-sm text-slate-500 ml-1">°C</span></p>
+            <p className="text-xs font-bold tracking-wider uppercase text-slate-500">Suhu Tertinggi</p>
+            <p className="mt-1 text-3xl font-extrabold text-white">{loading ? '...' : stats.maxSuhu}<span className="ml-1 text-sm text-slate-500">°C</span></p>
           </div>
           <Thermometer className="w-10 h-10 text-rose-500 opacity-60" />
         </div>
 
-        <div className="bg-slate-900 p-5 rounded-xl border border-slate-800 flex items-center justify-between">
+        <div className="flex items-center justify-between p-5 border bg-slate-900 rounded-xl border-slate-800">
           <div>
-            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Rerata Kelembaban</p>
-            <p className="text-3xl font-extrabold text-white mt-1">{loading ? '...' : stats.avgKelembaban}<span className="text-sm text-slate-500 ml-1">% RH</span></p>
+            <p className="text-xs font-bold tracking-wider uppercase text-slate-500">Rerata Kelembaban</p>
+            <p className="mt-1 text-3xl font-extrabold text-white">{loading ? '...' : stats.avgKelembaban}<span className="ml-1 text-sm text-slate-500">% RH</span></p>
           </div>
           <Droplets className="w-10 h-10 text-blue-500 opacity-60" />
         </div>
 
-        <div className="bg-slate-900 p-5 rounded-xl border border-slate-800 flex items-center justify-between">
+        <div className="flex items-center justify-between p-5 border bg-slate-900 rounded-xl border-slate-800">
           <div>
-            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Rerata Kec. Angin</p>
-            <p className="text-3xl font-extrabold text-white mt-1">{loading ? '...' : stats.avgAngin}<span className="text-sm text-slate-500 ml-1">m/s</span></p>
+            <p className="text-xs font-bold tracking-wider uppercase text-slate-500">Rerata Kec. Angin</p>
+            <p className="mt-1 text-3xl font-extrabold text-white">{loading ? '...' : stats.avgAngin}<span className="ml-1 text-sm text-slate-500">m/s</span></p>
           </div>
           <Wind className="w-10 h-10 text-slate-400 opacity-60" />
         </div>
 
-        <div className="bg-slate-900 p-5 rounded-xl border border-slate-800 flex items-center justify-between">
+        <div className="flex items-center justify-between p-5 border bg-slate-900 rounded-xl border-slate-800">
           <div>
-            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Populasi Kasus Hama</p>
-            <p className="text-3xl font-extrabold text-rose-400 mt-1">{loading ? '...' : stats.totalAlerts}<span className="text-sm text-slate-500 ml-1">Deteksi</span></p>
+            <p className="text-xs font-bold tracking-wider uppercase text-slate-500">Populasi Kasus Hama</p>
+            <p className="mt-1 text-3xl font-extrabold text-rose-400">{loading ? '...' : stats.totalAlerts}<span className="ml-1 text-sm text-slate-500">Deteksi</span></p>
           </div>
           <ShieldAlert className="w-10 h-10 text-rose-500 opacity-60" />
         </div>
       </div>
 
       {/* TABEL LEDGER BESAR */}
-      <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden shadow-2xl">
-        <div className="p-5 border-b border-slate-800 bg-slate-900/50 flex justify-between items-center">
+      <div className="overflow-hidden border shadow-2xl bg-slate-900 rounded-xl border-slate-800">
+        <div className="flex items-center justify-between p-5 border-b border-slate-800 bg-slate-900/50">
           <div className="flex items-center space-y-1">
             <div>
-              <h2 className="text-lg font-bold text-white flex items-center">
-                <BarChart2 className="w-5 h-5 text-emerald-400 mr-2" />
+              <h2 className="flex items-center text-lg font-bold text-white">
+                <BarChart2 className="w-5 h-5 mr-2 text-emerald-400" />
                 Ledger Riwayat Transaksi Data Lapangan
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">Total entri tersimpan di database: {allData.length} baris data</p>
@@ -171,7 +172,7 @@ export default function AnalyticsPage() {
             <select 
               value={rowsPerPage} 
               onChange={(e) => { setRowsPerPage(Number(e.target.value)); setCurrentPage(1); }}
-              className="bg-slate-800 border border-slate-700 text-white rounded px-2 py-1 focus:outline-none focus:border-emerald-500"
+              className="px-2 py-1 text-white border rounded bg-slate-800 border-slate-700 focus:outline-none focus:border-emerald-500"
             >
               <option value={10}>10 Baris</option>
               <option value={25}>25 Baris</option>
@@ -183,38 +184,38 @@ export default function AnalyticsPage() {
 
         <div className="overflow-x-auto">
           {loading ? (
-            <div className="p-20 text-center font-mono text-sm text-emerald-400 animate-pulse">
+            <div className="p-20 font-mono text-sm text-center text-emerald-400 animate-pulse">
               MENGEKSTRAKSI SELURUH TRANSAKSI MEMORI DARI DATABASE...
             </div>
           ) : allData.length === 0 ? (
-            <div className="p-20 text-center font-mono text-sm text-slate-600">
+            <div className="p-20 font-mono text-sm text-center text-slate-600">
               PANGKALAN DATA REKAMAN KOSONG.
             </div>
           ) : (
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-950 text-slate-400 text-xs uppercase tracking-wider border-b border-slate-800">
-                  <th className="py-4 px-6 font-bold">No</th>
-                  <th className="py-4 px-6 font-bold"><span className="flex items-center"><Calendar className="w-4 h-4 mr-1.5" /> Stempel Waktu</span></th>
-                  <th className="py-4 px-6 font-bold text-center">Suhu</th>
-                  <th className="py-4 px-6 font-bold text-center">Kelembaban</th>
-                  <th className="py-4 px-6 font-bold text-center">Kecepatan Angin</th>
-                  <th className="py-4 px-6 font-bold text-center">Status Perangkap</th>
+                <tr className="text-xs tracking-wider uppercase border-b bg-slate-950 text-slate-400 border-slate-800">
+                  <th className="px-6 py-4 font-bold">No</th>
+                  <th className="px-6 py-4 font-bold"><span className="flex items-center"><Calendar className="w-4 h-4 mr-1.5" /> Stempel Waktu</span></th>
+                  <th className="px-6 py-4 font-bold text-center">Suhu</th>
+                  <th className="px-6 py-4 font-bold text-center">Kelembaban</th>
+                  <th className="px-6 py-4 font-bold text-center">Kecepatan Angin</th>
+                  <th className="px-6 py-4 font-bold text-center">Status Perangkap</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800 text-sm font-mono">
+              <tbody className="font-mono text-sm divide-y divide-slate-800">
                 {currentRows.map((row, index) => {
                   const absoluteIndex = indexOfFirstRow + index + 1;
                   return (
-                    <tr key={index} className="hover:bg-slate-800/40 transition-colors">
-                      <td className="py-3 px-6 text-slate-500 font-medium">{absoluteIndex}</td>
-                      <td className="py-3 px-6 text-slate-300">
+                    <tr key={index} className="transition-colors hover:bg-slate-800/40">
+                      <td className="px-6 py-3 font-medium text-slate-500">{absoluteIndex}</td>
+                      <td className="px-6 py-3 text-slate-300">
                         {new Date(row.waktu_rekam).toLocaleString('id-ID')}
                       </td>
-                      <td className="py-3 px-6 text-center text-white font-bold">{row.suhu}°C</td>
-                      <td className="py-3 px-6 text-center text-blue-400">{row.kelembaban}%</td>
-                      <td className="py-3 px-6 text-center text-slate-400">{row.kecepatan_angin} m/s</td>
-                      <td className="py-3 px-6 text-center">
+                      <td className="px-6 py-3 font-bold text-center text-white">{row.suhu}°C</td>
+                      <td className="px-6 py-3 text-center text-blue-400">{row.kelembaban}%</td>
+                      <td className="px-6 py-3 text-center text-slate-400">{row.kecepatan_angin} m/s</td>
+                      <td className="px-6 py-3 text-center">
                         {row.status_alert === 1 ? (
                           <span className="px-2.5 py-1 bg-rose-950/50 border border-rose-500/30 text-rose-400 text-[11px] font-bold rounded-full">
                             ALERT DETEKSI
@@ -235,28 +236,28 @@ export default function AnalyticsPage() {
 
         {/* INTEGRASI BILAH NAVIGASI PAGINASI */}
         {allData.length > 0 && !loading && (
-          <div className="p-4 bg-slate-950 border-t border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-slate-400">
+          <div className="flex flex-col items-center justify-between gap-4 p-4 text-sm border-t bg-slate-950 border-slate-800 sm:flex-row text-slate-400">
             <div>
-              Menampilkan <span className="text-white font-bold">{indexOfFirstRow + 1}</span> sampai <span className="text-white font-bold">{Math.min(indexOfLastRow, allData.length)}</span> dari <span className="text-emerald-400 font-bold">{allData.length}</span> Entri Data.
+              Menampilkan <span className="font-bold text-white">{indexOfFirstRow + 1}</span> sampai <span className="font-bold text-white">{Math.min(indexOfLastRow, allData.length)}</span> dari <span className="font-bold text-emerald-400">{allData.length}</span> Entri Data.
             </div>
             
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
-                className="p-2 bg-slate-900 border border-slate-800 rounded-lg hover:bg-slate-800 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="p-2 transition-colors border rounded-lg bg-slate-900 border-slate-800 hover:bg-slate-800 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
               
-              <div className="px-4 py-2 bg-slate-900 border border-slate-800 rounded-lg text-white font-bold font-mono">
+              <div className="px-4 py-2 font-mono font-bold text-white border rounded-lg bg-slate-900 border-slate-800">
                 Halaman {currentPage} / {totalPages}
               </div>
 
               <button
                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                 disabled={currentPage === totalPages}
-                className="p-2 bg-slate-900 border border-slate-800 rounded-lg hover:bg-slate-800 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="p-2 transition-colors border rounded-lg bg-slate-900 border-slate-800 hover:bg-slate-800 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 <ChevronRight className="w-5 h-5" />
               </button>

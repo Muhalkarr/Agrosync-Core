@@ -6,9 +6,7 @@ module.exports = {
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
-    extend: {
-      // Anda bisa menambahkan kustomisasi tema di sini jika diperlukan
-    },
+    extend: {},
   },
   plugins: [],
 };

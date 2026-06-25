@@ -1,0 +1,21 @@
+# ==============================================================================
+# AGROSYNC - MASTER APACHE CONFIG (UNIFIED ARCHITECTURE)
+# ==============================================================================
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # 1. PENGECUALIAN ABSOLUT UNTUK PASSENGER
+  # Jangan sentuh apapun yang menuju ke /api. Biarkan Passenger di folder anak mengambil alih.
+  RewriteCond %{REQUEST_URI} ^/api/ [NC]
+  RewriteRule ^ - [L]
+
+  # 2. LOGIKA NEXT.JS SSG
+  # Jika fail atau direktori statis ada, sajikan langsung.
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Jika halaman .html yang cocok ada, lakukan rewrite internal tanpa mengubah URL browser
+  RewriteCond %{REQUEST_FILENAME}.html -f
+  RewriteRule ^(.*)$ $1.html [L]
+</IfModule>

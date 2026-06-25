@@ -7,6 +7,8 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+
+  trailingSlash: true // Mencegah konflik rotasi mod_rewrite Apache
 };
 
 module.exports = nextConfig;

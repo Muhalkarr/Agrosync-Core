@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image'; // <-- Impor komponen Image
 import { ChevronLeft, ChevronRight, Filter, Grid, Tag, Sliders, AlertCircle } from 'lucide-react';
 
-const SERVER_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+// [PERBAIKAN] Gunakan variabel lingkungan untuk URL API. Di produksi, ini akan menjadi path relatif (misal: '/api').
+const SERVER_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 interface ImageMetadata {
   id: number;
@@ -32,7 +33,7 @@ export default function VisionArchivePage() {
     try {
       setLoading(true);
       // Kirim batas limit dan offset halaman langsung ke MySQL peladen
-      const res = await fetch(`${SERVER_URL}/api/vision/archive?page=${page}&limit=${limit}&label=${labelFilter}`);
+      const res = await fetch(`${SERVER_URL}/vision/archive?page=${page}&limit=${limit}&label=${labelFilter}`);
       if (res.ok) {
         const data = await res.json();
         setImages(data.images);
@@ -54,7 +55,7 @@ export default function VisionArchivePage() {
   // --- LOGIKA EKSEKUSI PELABELAN MANUAL (HUMAN ANNOTATION) ---
   const handleApplyLabel = async (id: number, targetLabel: 'HAMA' | 'NORMAL' | 'BURAM') => {
     try {
-      const res = await fetch(`${SERVER_URL}/api/vision/label/${id}`, {
+      const res = await fetch(`${SERVER_URL}/vision/label/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ label: targetLabel })
@@ -70,21 +71,21 @@ export default function VisionArchivePage() {
   };
 
   return (
-    <div className="p-8 space-y-6 bg-slate-950 min-h-screen text-slate-100">
+    <div className="min-h-screen p-8 space-y-6 bg-slate-950 text-slate-100">
       
       {/* HEADER UTAMA */}
-      <div className="border-b border-slate-800 pb-4">
-        <h1 className="text-3xl font-bold text-emerald-400 tracking-tight">ARSIP VISI EDGE</h1>
-        <p className="text-slate-400 text-sm mt-1">Kurasi Kualitas Optik & Alat Pelabelan Dataset Mandiri untuk Pra-Pelatihan YOLOv8</p>
+      <div className="pb-4 border-b border-slate-800">
+        <h1 className="text-3xl font-bold tracking-tight text-emerald-400">ARSIP VISI EDGE</h1>
+        <p className="mt-1 text-sm text-slate-400">Kurasi Kualitas Optik & Alat Pelabelan Dataset Mandiri untuk Pra-Pelatihan YOLOv8</p>
       </div>
 
       {/* BILAH KONTROL: FILTER & KUSTOMISASI PANJANG DATA (LIMIT) */}
-      <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4 shadow-lg">
+      <div className="flex flex-col items-center justify-between gap-4 p-4 border shadow-lg bg-slate-900 rounded-xl border-slate-800 md:flex-row">
         
         {/* KONTROL FILTER KATEGORI LABEL */}
-        <div className="flex items-center space-x-3 w-full md:w-auto">
+        <div className="flex items-center w-full space-x-3 md:w-auto">
           <Filter className="w-4 h-4 text-slate-500" />
-          <span className="text-sm text-slate-400 hidden sm:inline">Filter Status:</span>
+          <span className="hidden text-sm text-slate-400 sm:inline">Filter Status:</span>
           <div className="flex flex-wrap gap-1.5">
             {['ALL', 'UNLABELED', 'HAMA', 'NORMAL', 'BURAM'].map((lbl) => (
               <button
@@ -102,7 +103,7 @@ export default function VisionArchivePage() {
         </div>
 
         {/* TUAS KUSTOMISASI JUMLAH TAMPILAN GAMBAR (ANTI-ENDLESS SCROLLING) */}
-        <div className="flex items-center space-x-2 text-sm text-slate-400 w-full md:w-auto justify-end">
+        <div className="flex items-center justify-end w-full space-x-2 text-sm text-slate-400 md:w-auto">
           <Sliders className="w-4 h-4 text-slate-500" />
           <span>Tampilkan Kapasitas:</span>
           <select
@@ -121,28 +122,28 @@ export default function VisionArchivePage() {
 
       {/* RENDER GRID KISI GAMBER RESPONSIVE */}
       {loading ? (
-        <div className="p-40 text-center font-mono text-sm text-emerald-400 animate-pulse tracking-widest">
+        <div className="p-40 font-mono text-sm tracking-widest text-center text-emerald-400 animate-pulse">
           MEMUAT MATRIKS BINER GAMBAR DARI HARD DISK SERVER LOKAL...
         </div>
       ) : images.length === 0 ? (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-20 text-center text-slate-500 font-mono text-sm flex flex-col items-center justify-center">
-          <AlertCircle className="w-10 h-10 text-slate-700 mb-3" />
+        <div className="flex flex-col items-center justify-center p-20 font-mono text-sm text-center border bg-slate-900 border-slate-800 rounded-xl text-slate-500">
+          <AlertCircle className="w-10 h-10 mb-3 text-slate-700" />
           TIDAK ADA REKAMAN CITRA YANG MEMENUHI KRITERIA FILTER INI.
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {images.map((img) => (
-            <div key={img.id} className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden flex flex-col group hover:border-slate-700 shadow-md transition-all">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          {images.map((img, index) => (
+            <div key={img.id} className="flex flex-col overflow-hidden transition-all border shadow-md bg-slate-900 rounded-xl border-slate-800 group hover:border-slate-700">
               
               {/* AREA FOTO JPEG DARI SERVER */}
-              <div className="bg-black aspect-video relative overflow-hidden border-b border-slate-800">
+              <div className="relative overflow-hidden bg-black border-b aspect-video border-slate-800">
                 <Image 
                   src={img.image_url} 
                   alt="Citra Perangkap" 
                   fill // <-- Gunakan 'fill' untuk mengisi div parent
-                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
                   sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                  priority={images.indexOf(img) < 4} // Prioritaskan pemuatan 4 gambar pertama
+                  priority={index < 4} // Prioritaskan pemuatan 4 gambar pertama
                 />
                 
                 {/* LENCANA STATUS LABEL AKTIF */}
@@ -159,9 +160,9 @@ export default function VisionArchivePage() {
               </div>
 
               {/* AREA METADATA FILE */}
-              <div className="p-4 flex-1 flex flex-col justify-between space-y-4">
+              <div className="flex flex-col justify-between flex-1 p-4 space-y-4">
                 <div className="space-y-1 font-mono text-xs text-slate-400">
-                  <p className="text-slate-500 font-bold">ID BERKAS: #{img.id}</p>
+                  <p className="font-bold text-slate-500">ID BERKAS: #{img.id}</p>
                   <p>Waktu: {new Date(img.waktu_tangkap).toLocaleString('id-ID')}</p>
                   <p>Ukuran: <span className="text-slate-300">{img.file_size_kb} KB</span></p>
                 </div>
@@ -210,28 +211,28 @@ export default function VisionArchivePage() {
 
       {/* BILAH PAGINASI ASINKRON (LEVEL DATABASE) */}
       {images.length > 0 && !loading && (
-        <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-slate-400 shadow-inner">
+        <div className="flex flex-col items-center justify-between gap-4 p-4 text-sm border shadow-inner bg-slate-900 border-slate-800 rounded-xl sm:flex-row text-slate-400">
           <div>
-            Menampilkan Lembar <span className="text-white font-bold">{page}</span> dari total <span className="text-emerald-400 font-bold">{totalPages}</span> Halaman. (Arsip Global: <span className="text-white font-bold">{totalItems}</span> Citra).
+            Menampilkan Lembar <span className="font-bold text-white">{page}</span> dari total <span className="font-bold text-emerald-400">{totalPages}</span> Halaman. (Arsip Global: <span className="font-bold text-white">{totalItems}</span> Citra).
           </div>
           
           <div className="flex items-center space-x-2">
             <button
               onClick={() => setPage(prev => Math.max(prev - 1, 1))}
               disabled={page === 1}
-              className="p-2 bg-slate-800 border border-slate-700 rounded-lg hover:bg-slate-700 text-slate-300 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+              className="p-2 transition-colors border rounded-lg bg-slate-800 border-slate-700 hover:bg-slate-700 text-slate-300 disabled:opacity-20 disabled:cursor-not-allowed"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
             
-            <div className="px-4 py-2 bg-slate-950 border border-slate-800 rounded-lg text-emerald-400 font-black font-mono">
+            <div className="px-4 py-2 font-mono font-black border rounded-lg bg-slate-950 border-slate-800 text-emerald-400">
               HALAMAN {page}
             </div>
 
             <button
               onClick={() => setPage(prev => Math.min(prev + 1, totalPages))}
               disabled={page === totalPages}
-              className="p-2 bg-slate-800 border border-slate-700 rounded-lg hover:bg-slate-700 text-slate-300 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+              className="p-2 transition-colors border rounded-lg bg-slate-800 border-slate-700 hover:bg-slate-700 text-slate-300 disabled:opacity-20 disabled:cursor-not-allowed"
             >
               <ChevronRight className="w-5 h-5" />
             </button>
