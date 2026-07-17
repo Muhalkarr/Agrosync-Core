@@ -1,11 +1,11 @@
-# 🌾 AGROSYNC CORE SYSTEM
+#  AGROSYNC CORE SYSTEM
 **Sistem Pemantauan Mikroklimat & Gateway Visi Edge Terdistribusi**
 
 Repositori ini adalah pusat dari proyek Agrosync, sebuah platform Internet of Things (IoT) yang dirancang untuk memantau kondisi mikroklimat dan visual di lingkungan pertanian. Sistem ini terdiri dari backend Node.js yang andal, dasbor frontend Next.js yang interaktif, dan skrip Python untuk ekstraksi data.
 
 ---
 
-## 🏛️ Arsitektur Sistem
+##  Arsitektur Sistem
 
 Sistem ini dirancang dengan arsitektur terpadu (unified) untuk kemudahan deployment di lingkungan hosting seperti cPanel, di mana frontend dan backend berada di bawah satu domain.
 
@@ -20,15 +20,15 @@ Sistem ini dirancang dengan arsitektur terpadu (unified) untuk kemudahan deploym
                  |         PENGGUNA (Browser)           |
                  +--------------------------------------+
                               |          ^
-            (Fetch ke /api/...) |          | (Respons JSON)
+          (Fetch ke /api/...) |          | (Respons JSON)
                               v          |
                  +--------------------------------------+
                  | .htaccess (Apache Reverse Proxy)     |
                  |  - Meneruskan /api/* ke Node.js      |
                  |  - Menyajikan file statis lainnya    |
                  +--------------------------------------+
-                              |
-                              v
+                                  |
+                                  v
                  +--------------------------------------+
                  |   Aplikasi Node.js (api/server.js)   |
                  |   - Terhubung ke Database MySQL      |
@@ -129,7 +129,7 @@ Skrip ini digunakan untuk mengunduh gambar yang telah dilabeli dari dasbor untuk
 
 ---
 
-## 🚀 Panduan Deployment (cPanel)
+## Panduan Deployment (cPanel)
 
 1.  **Build Frontend:** Atur `NEXT_PUBLIC_API_URL=/api` di `.env.local`, lalu jalankan `npm run build`.
 2.  **Unggah File:**
@@ -142,3 +142,9 @@ Skrip ini digunakan untuk mengunduh gambar yang telah dilabeli dari dasbor untuk
     - Jalankan "NPM Install".
     - Atur semua *Environment Variables* produksi (kredensial DB, API Key, dll).
 4.  **Konfigurasi `.htaccess`:** Pastikan file `.htaccess` di root domain (`public_html/agrosync.analyzer.web.id/`) ada dan dikonfigurasi untuk menangani rute Next.js dan mengecualikan path `/api/`.
+
+
+## Diagram topologi yang terpasang 
+<img width="835" height="1017" alt="image" src="https://github.com/user-attachments/assets/a65b8e65-8247-45ec-9cdc-d518ef15a230" />
+
+Secara kelistrikan, sistem ini sangat tidak ramah.
