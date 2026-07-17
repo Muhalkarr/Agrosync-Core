@@ -14,7 +14,8 @@ export default function AgrosyncDashboard() {
   const [visionData, setVisionData] = useState({ image_url: '', waktu_tangkap: '' });
   const [systemHealth, setSystemHealth] = useState('ONLINE');
   const [isCommanding, setIsCommanding] = useState(false);
-  const [ledBrightness, setLedBrightness] = useState(20); // <--- TAMBAHKAN INI
+  const [isFetchingHistory, setIsFetchingHistory] = useState(true);
+  const [ledBrightness, setLedBrightness] = useState(20); // <--- JADI DEFAULT 20, BUKAN 0, UNTUK MENCEGAH KAMERA GELAP TOTAL
 
   // --- LOGIKA AKUISISI DATA TERINTEGRASI & VALIDASI HEARTBEAT ---
   const fetchLatestData = async () => {
@@ -33,6 +34,17 @@ export default function AgrosyncDashboard() {
             kelembaban: parseFloat(dataLatest.kelembaban),
             kecepatan_angin: parseFloat(dataLatest.kecepatan_angin),
             status_alert: parseInt(dataLatest.status_alert)
+          });
+
+          // [PERBAIKAN] Injeksi data terbaru ke dalam riwayat grafik secara real-time
+          setFullHistory(prevHistory => {
+            // Cek apakah data terbaru ini benar-benar baru dibandingkan data terakhir di grafik
+            const lastHistoryItem = prevHistory[prevHistory.length - 1];
+            if (lastHistoryItem && new Date(dataLatest.waktu_rekam).getTime() <= new Date(lastHistoryItem.waktu_rekam).getTime()) {
+              return prevHistory; // Data tidak baru, jangan lakukan apa-apa
+            }
+            // Jika baru, tambahkan ke akhir array state
+            return [...prevHistory, dataLatest];
           });
 
           const waktuTerakhirAlat = new Date(dataLatest.waktu_rekam).getTime();
@@ -71,48 +83,30 @@ export default function AgrosyncDashboard() {
     }
   };
 
-  // TAMBAHKAN STATE FILTER WAKTU DI BAGIAN ATAS KOMPONEN
-  const [timeFilter, setTimeFilter] = useState<number>(1 * 60 * 60 * 1000); // Default 1 Jam dalam milidetik
   const [fullHistory, setFullHistory] = useState<any[]>([]);
-  const [filteredChartData, setFilteredChartData] = useState<any[]>([]);
+  const [chartData, setChartData] = useState<any[]>([]);
 
-  // 3. MESIN KOMPUTASI FILTER TEMPORAL & SUMBU X ADAPTIF
-useEffect(() => {
+  // 3. MESIN FORMATTING DATA GRAFIK
+  useEffect(() => {
     if (fullHistory.length === 0) return;
-    
-    const now = Date.now();
-    let threshold = now - timeFilter;
-    
-    // Filter data mentah berdasarkan epoch timestamp
-    const filtered = fullHistory.filter((item: any) => {
-        const itemTime = new Date(item.waktu_rekam).getTime();
-        return itemTime >= threshold;
-    });
 
-    // MESIN FORMAT WAKTU (Resolusi Adaptif)
-    const formatted = filtered.map((item: any) => {
-        const dateObj = new Date(item.waktu_rekam);
-        let timeString = '';
-
-        if (timeFilter <= 24 * 60 * 60 * 1000) {
-            // JIKA FILTER 1 - 24 JAM: Tampilkan Jam & Menit saja (Contoh: 14:30)
-            timeString = dateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute:'2-digit' });
-        } else if (timeFilter <= 7 * 24 * 60 * 60 * 1000) {
-            // JIKA FILTER 1 MINGGU: Tampilkan Nama Hari + Jam (Contoh: Sen 14:00)
-            timeString = `${dateObj.toLocaleDateString('id-ID', { weekday: 'short' })} ${dateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute:'2-digit' })}`;
-        } else {
-            // JIKA FILTER > 1 MINGGU / MAX: Tampilkan Tanggal, Bulan, Jam (Contoh: 15/08/2023 14:00)
-            timeString = `${dateObj.getDate()}/${dateObj.getMonth() + 1}/${dateObj.getFullYear()} ${dateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute:'2-digit' })}`;
-        }
+    const formatted = fullHistory.map((item: any) => {
+        const timestamp = new Date(item.waktu_rekam);
+        // Format menjadi "DD/MM HH:mm" untuk konsistensi
+        const year = timestamp.getUTCFullYear();
+        const day = String(timestamp.getUTCDate()).padStart(2, '0');
+        const month = String(timestamp.getUTCMonth() + 1).padStart(2, '0');
+        const hours = String(timestamp.getUTCHours()).padStart(2, '0');
+        const minutes = String(timestamp.getUTCMinutes()).padStart(2, '0');
 
         return {
             ...item,
-            waktu: timeString // Format waktu yang sudah cerdas masuk ke sini
+            waktu: `${day}/${month}/${year} ${hours}:${minutes}`
         };
     });
     
-    setFilteredChartData(formatted);
-}, [fullHistory, timeFilter]);
+    setChartData(formatted);
+  }, [fullHistory]);
 
 // STATE VISIBILITAS GRAFIK SENSOR
   const [showSuhu, setShowSuhu] = useState(true);
@@ -138,15 +132,29 @@ useEffect(() => {
   // --- SIKLUS HIDUP KOMPONEN (HANYA SEKALI UNTUK DATA HISTORIS) ---
   useEffect(() => {
     const fetchHistoryData = async () => {
+      setIsFetchingHistory(true);
+      const url = `${SERVER_URL}/telemetry/graph-history`;
+
       try {
-        const res = await fetch(`${SERVER_URL}/telemetry/all`);
-        if (res.ok) setFullHistory((await res.json()).reverse());
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          setFullHistory(data);
+          // [PERBAIKAN UX] Set brush untuk menampilkan 100 data terakhir secara default
+          if (data.length > 100) {
+            setBrushStartIndex(data.length - 100);
+            setBrushEndIndex(data.length - 1);
+          }
+        }
       } catch (error) {
         console.error("Gagal mengambil data historis untuk grafik:", error);
+        setFullHistory([]); // Kosongkan data jika gagal
+      } finally {
+        setIsFetchingHistory(false);
       }
     };
     fetchHistoryData();
-  }, []);
+  }, []); // <-- Dependensi kosong, hanya berjalan sekali saat komponen dimuat
 
   // --- LOGIKA EKSEKUSI INSPEKSI MANUAL ---
   const triggerManualInspection = async () => {
@@ -179,24 +187,24 @@ useEffect(() => {
   };
 
   return (
-    <div className="min-h-screen p-8 font-sans bg-slate-900 text-slate-100">
+    <div className="p-4 font-sans md:p-8">
       
       {/* HEADER & SYSTEM HEALTH */}
-      <header className="flex items-center justify-between pb-4 mb-8 border-b border-slate-700">
+      <div className="flex flex-col items-start justify-between gap-4 pb-4 mb-8 border-b md:flex-row md:items-center border-slate-700">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-emerald-400">AGROSYNC COMMAND CENTER</h1>
           <p className="mt-1 text-sm text-slate-400">Sistem Pemantauan Mikroklimat & Visi Edge Terdistribusi</p>
         </div>
         
         {/* LENCANA INDIKATOR KONEKTIVITAS (3 STATUS DISKRET) */}
-        <div className={`flex items-center px-4 py-2 rounded-full border shadow-md font-semibold tracking-wide text-xs uppercase transition-all
+        <div className={`flex items-center px-3 py-2 text-xs font-semibold tracking-wide uppercase transition-all border rounded-full shadow-md
           ${systemHealth === 'ONLINE' ? 'bg-emerald-950/40 border-emerald-500 text-emerald-400' : ''}
           ${systemHealth === 'HARDWARE_OFFLINE' ? 'bg-amber-950/40 border-amber-500 text-amber-400 animate-pulse' : ''}
           ${systemHealth === 'SERVER_OFFLINE' ? 'bg-rose-950/40 border-rose-500 text-rose-400' : ''}
         `}>
-          {systemHealth === 'ONLINE' && <CheckCircle className="w-4 h-4 mr-2" />}
-          {systemHealth === 'HARDWARE_OFFLINE' && <AlertTriangle className="w-4 h-4 mr-2" />}
-          {systemHealth === 'SERVER_OFFLINE' && <XCircle className="w-4 h-4 mr-2" />}
+          {systemHealth === 'ONLINE' && <CheckCircle className="w-4 h-4 mr-1.5" />}
+          {systemHealth === 'HARDWARE_OFFLINE' && <AlertTriangle className="w-4 h-4 mr-1.5" />}
+          {systemHealth === 'SERVER_OFFLINE' && <XCircle className="w-4 h-4 mr-1.5" />}
           
           <span>
             {systemHealth === 'ONLINE' && 'SISTEM STABIL (ONLINE)'}
@@ -204,7 +212,7 @@ useEffect(() => {
             {systemHealth === 'SERVER_OFFLINE' && 'PELADEN MATI (OFFLINE)'}
           </span>
         </div>
-      </header>
+      </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         
@@ -291,32 +299,18 @@ useEffect(() => {
                     ANGIN
                   </button>
                 </div>
-
-                <select 
-                    value={timeFilter}
-                    onChange={(e) => {
-                      setTimeFilter(Number(e.target.value));
-                      // Reset memori Brush setiap kali rentang waktu makro diubah
-                      setBrushStartIndex(undefined);
-                      setBrushEndIndex(undefined);
-                    }}
-                    className="px-3 py-2 text-xs font-bold border rounded-lg bg-slate-900 border-slate-700 text-slate-300 focus:outline-none focus:border-emerald-500"
-                >
-                    <option value={1 * 60 * 60 * 1000}>1 Jam Terakhir</option>
-                    <option value={4 * 60 * 60 * 1000}>4 Jam Terakhir</option>
-                    <option value={12 * 60 * 60 * 1000}>12 Jam Terakhir</option>
-                    <option value={24 * 60 * 60 * 1000}>24 Jam Terakhir</option>
-                    <option value={7 * 24 * 60 * 60 * 1000}>1 Minggu Terakhir</option>
-                    <option value={30 * 24 * 60 * 60 * 1000}>1 Bulan Terakhir</option>
-                    <option value={999999999999999}>Sepanjang Waktu (Max)</option>
-                </select>
               </div>
             </div>
             
             {/* KANVAS RECHARTS DENGAN MINIMAP (BRUSH) */}
-            <div className="w-full min-h-[380px]" style={{ height: '380px' }}>
+            <div className="w-full min-h-[380px] relative" style={{ height: '380px' }}>
+              {isFetchingHistory && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center font-mono text-sm text-center rounded-lg bg-slate-800/80 text-emerald-400 animate-pulse">
+                  MEMUAT DATA HISTORIS DARI SERVER...
+                </div>
+              )}
               <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-                <LineChart data={filteredChartData}>
+                <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                   
                   {/* Sumbu X sekarang menggunakan resolusi adaptif */}
@@ -324,13 +318,20 @@ useEffect(() => {
                   
                   {/* Sumbu Y Terkondisional */}
                   {(showSuhu || showKelembaban) && (
-                    <YAxis yAxisId="left" stroke="#94a3b8" fontSize={11} domain={['auto', 'auto']} tickMargin={5} />
+                    // [PERBAIKAN] Domain dinamis dengan bantalan untuk mencegah pemotongan grafik.
+                    <YAxis yAxisId="left" stroke="#94a3b8" fontSize={11} domain={['dataMin - 2', 'dataMax + 5']} tickMargin={5} />
                   )}
                   {showAngin && (
-                    <YAxis yAxisId="right" orientation="right" stroke="#64748b" fontSize={11} domain={['auto', 'auto']} tickMargin={5} />
+                    // [PERBAIKAN] Domain khusus untuk angin, memastikan rentang minimal terlihat.
+                    <YAxis yAxisId="right" orientation="right" stroke="#64748b" fontSize={11} domain={[0, 'dataMax + 1']} tickMargin={5} />
                   )}
                   
-                  <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b' }} />
+                  <Tooltip 
+                    // [PERBAIKAN] Atur warna latar & border tooltip.
+                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b' }} 
+                    // [PERBAIKAN] Atur warna teks label waktu (sumbu-X) menjadi putih agar mudah dibaca.
+                    labelStyle={{ color: '#e2e8f0' }}
+                  />
                   
                   {/* RENDER GARIS BERDASARKAN SAKELAR */}
                   {showSuhu && <Line yAxisId="left" type="monotone" dataKey="suhu" name="Suhu (°C)" stroke="#f43f5e" strokeWidth={2} dot={false} activeDot={{ r: 6 }} />}
@@ -373,7 +374,7 @@ useEffect(() => {
                   Visualisasi Perangkap
                 </h2>
                 <p className="mt-1 text-xs text-slate-400">
-                  Pembaruan Terakhir: {visionData.waktu_tangkap ? new Date(visionData.waktu_tangkap).toLocaleString('id-ID') : 'Belum ada data'}
+                  Pembaruan Terakhir: {visionData.waktu_tangkap ? new Date(visionData.waktu_tangkap).toISOString().replace('T', ' ').substring(0, 16) : 'Belum ada data'}
                 </p>
               </div>
               {latestData.status_alert === 1 && (

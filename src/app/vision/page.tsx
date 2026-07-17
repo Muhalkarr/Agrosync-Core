@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image'; // <-- Impor komponen Image
-import { ChevronLeft, ChevronRight, Filter, Grid, Tag, Sliders, AlertCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Filter, Grid, Tag, Sliders, AlertCircle, Trash2, Download } from 'lucide-react';
 
 // [PERBAIKAN] Gunakan variabel lingkungan untuk URL API. Di produksi, ini akan menjadi path relatif (misal: '/api').
 const SERVER_URL = process.env.NEXT_PUBLIC_API_URL || '';
@@ -12,7 +12,7 @@ interface ImageMetadata {
   waktu_tangkap: string;
   file_path: string;
   file_size_kb: number;
-  manual_label: 'UNLABELED' | 'HAMA' | 'NORMAL' | 'BURAM';
+  manual_label: 'UNLABELED' | 'HAMA' | 'BUKAN HAMA' | 'BURAM';
   image_url: string;
 }
 
@@ -27,6 +27,8 @@ export default function VisionArchivePage() {
   const [labelFilter, setLabelFilter] = useState<string>('ALL');
   const [totalPages, setTotalPages] = useState<number>(1);
   const [totalItems, setTotalItems] = useState<number>(0);
+  const [selectedImages, setSelectedImages] = useState<number[]>([]);
+  const [isDownloading, setIsDownloading] = useState<boolean>(false);
 
   // --- LOGIKA FETCH DATA DENGAN PARAMETER QUERY DATABASE ---
   const fetchArchive = async () => {
@@ -39,6 +41,7 @@ export default function VisionArchivePage() {
         setImages(data.images);
         setTotalPages(data.pagination.total_pages || 1);
         setTotalItems(data.pagination.total_items);
+        setSelectedImages([]); // Reset seleksi setiap kali data di-fetch ulang
       }
     } catch (error) {
       console.error("Gagal terhubung ke gerbang arsip biner:", error);
@@ -53,7 +56,7 @@ export default function VisionArchivePage() {
   }, [page, limit, labelFilter]);
 
   // --- LOGIKA EKSEKUSI PELABELAN MANUAL (HUMAN ANNOTATION) ---
-  const handleApplyLabel = async (id: number, targetLabel: 'HAMA' | 'NORMAL' | 'BURAM') => {
+  const handleApplyLabel = async (id: number, targetLabel: 'HAMA' | 'BUKAN HAMA' | 'BURAM') => {
     try {
       const res = await fetch(`${SERVER_URL}/vision/label/${id}`, {
         method: 'PUT',
@@ -70,8 +73,101 @@ export default function VisionArchivePage() {
     }
   };
 
+  // --- LOGIKA SELEKSI & PENGHAPUSAN GAMBAR ---
+  const handleImageSelect = (id: number) => {
+    setSelectedImages(prev => 
+        prev.includes(id) ? prev.filter(imgId => imgId !== id) : [...prev, id]
+    );
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedImages.length === 0) return;
+
+    const confirmation = window.confirm(`Anda yakin ingin menghapus ${selectedImages.length} gambar secara permanen dari database dan disk? Tindakan ini tidak dapat dibatalkan.`);
+    if (!confirmation) return;
+
+    try {
+      setLoading(true);
+      const res = await fetch(`${SERVER_URL}/vision/bulk`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selectedImages })
+      });
+
+      if (res.ok) {
+        alert('Gambar yang dipilih berhasil dihapus.');
+        // Fetch ulang data untuk memperbarui UI dan paginasi
+        await fetchArchive();
+      } else {
+        const errorData = await res.json();
+        alert(`Gagal menghapus gambar: ${errorData.error}`);
+        setLoading(false);
+      }
+    } catch (error) {
+      alert('Gagal terhubung ke server untuk menghapus gambar.');
+      console.error("Gagal menghapus gambar:", error);
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteAllImages = async () => {
+    const confirmation = window.prompt(`TINDAKAN INI BERBAHAYA DAN TIDAK DAPAT DIBATALKAN.\n\nAnda akan menghapus SEMUA ${totalItems} data gambar dan file fisiknya dari server.\n\nUntuk melanjutkan, ketik "HAPUS SEMUA" di bawah ini:`);
+    if (confirmation !== 'HAPUS SEMUA') {
+      alert('Penghapusan dibatalkan.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const res = await fetch(`${SERVER_URL}/vision/all-data`, {
+        method: 'DELETE',
+      });
+
+      if (res.ok) {
+        alert('Semua data gambar berhasil dihapus.');
+        await fetchArchive(); // Refresh the view
+      } else {
+        const errorData = await res.json();
+        alert(`Gagal menghapus semua gambar: ${errorData.error}`);
+        setLoading(false);
+      }
+    } catch (error) {
+      alert('Gagal terhubung ke server untuk menghapus semua gambar.');
+      setLoading(false);
+    }
+  };
+
+  const handleDownloadDataset = async () => {
+    if (totalItems === 0) {
+      alert("Tidak ada gambar dalam arsip untuk diunduh.");
+      return;
+    }
+    
+    const downloadMessage = labelFilter === 'ALL'
+      ? `Anda akan mengunduh SEMUA (${totalItems}) gambar dalam format ZIP.`
+      : `Anda akan mengunduh gambar dengan label "${labelFilter}" (${totalItems}) dalam format ZIP.`;
+    
+    const confirmation = window.confirm(`${downloadMessage} Proses ini mungkin membebani server untuk sementara. Lanjutkan?`);
+    if (!confirmation) return;
+
+    setIsDownloading(true);
+    try {
+      // Cara paling sederhana dan andal untuk memicu unduhan file dari server
+      // Tambahkan filter label sebagai query parameter
+      window.location.href = `${SERVER_URL}/vision/export-dataset?label=${labelFilter}`;
+      
+      // Asumsikan unduhan dimulai, re-enable tombol setelah beberapa detik
+      setTimeout(() => setIsDownloading(false), 8000);
+
+    } catch (error) {
+      console.error("Gagal memulai unduhan:", error);
+      alert("Terjadi kesalahan saat mencoba memulai unduhan.");
+      setIsDownloading(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen p-8 space-y-6 bg-slate-950 text-slate-100">
+    <div className="p-4 space-y-6 md:p-8">
       
       {/* HEADER UTAMA */}
       <div className="pb-4 border-b border-slate-800">
@@ -80,14 +176,14 @@ export default function VisionArchivePage() {
       </div>
 
       {/* BILAH KONTROL: FILTER & KUSTOMISASI PANJANG DATA (LIMIT) */}
-      <div className="flex flex-col items-center justify-between gap-4 p-4 border shadow-lg bg-slate-900 rounded-xl border-slate-800 md:flex-row">
+      <div className="flex flex-col items-center justify-between gap-4 p-4 border shadow-lg bg-slate-900 rounded-xl border-slate-800 lg:flex-row">
         
         {/* KONTROL FILTER KATEGORI LABEL */}
-        <div className="flex items-center w-full space-x-3 md:w-auto">
+        <div className="flex flex-wrap items-center w-full gap-3">
           <Filter className="w-4 h-4 text-slate-500" />
           <span className="hidden text-sm text-slate-400 sm:inline">Filter Status:</span>
           <div className="flex flex-wrap gap-1.5">
-            {['ALL', 'UNLABELED', 'HAMA', 'NORMAL', 'BURAM'].map((lbl) => (
+            {['ALL', 'UNLABELED', 'HAMA', 'BUKAN HAMA', 'BURAM'].map((lbl) => (
               <button
                 key={lbl}
                 onClick={() => { setLabelFilter(lbl); setPage(1); }}
@@ -102,10 +198,41 @@ export default function VisionArchivePage() {
           </div>
         </div>
 
-        {/* TUAS KUSTOMISASI JUMLAH TAMPILAN GAMBAR (ANTI-ENDLESS SCROLLING) */}
-        <div className="flex items-center justify-end w-full space-x-2 text-sm text-slate-400 md:w-auto">
-          <Sliders className="w-4 h-4 text-slate-500" />
-          <span>Tampilkan Kapasitas:</span>
+        <div className="flex items-center justify-end w-full gap-4">
+          {/* TOMBOL HAPUS MASSAL */}
+          <button
+            onClick={handleDeleteSelected}
+            disabled={selectedImages.length === 0}
+            className="flex items-center px-4 py-2 text-sm font-bold text-white transition-all rounded-lg bg-rose-600 hover:bg-rose-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Hapus ({selectedImages.length})
+          </button>
+
+          {/* TOMBOL HAPUS SEMUA */}
+          <button
+            onClick={handleDeleteAllImages}
+            disabled={loading || totalItems === 0}
+            className="flex items-center px-4 py-2 text-sm font-bold text-white transition-all bg-red-800 rounded-lg hover:bg-red-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Hapus Semua
+          </button>
+
+          {/* TOMBOL UNDUH DATASET ZIP */}
+          <button
+            onClick={handleDownloadDataset}
+            disabled={loading || isDownloading || totalItems === 0}
+            className="flex items-center px-4 py-2 text-sm font-bold text-white transition-all rounded-lg bg-sky-600 hover:bg-sky-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Unduh Dataset
+          </button>
+
+
+          {/* TUAS KUSTOMISASI JUMLAH TAMPILAN GAMBAR */}
+          <div className="flex items-center space-x-2 text-sm text-slate-400">
+          <Sliders className="w-4 h-4 text-slate-500" />          
           <select
             value={limit}
             onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
@@ -117,6 +244,7 @@ export default function VisionArchivePage() {
             <option value={24}>24 Gambar / Lembar</option>
             <option value={48}>48 Gambar / Lembar</option>
           </select>
+        </div>
         </div>
       </div>
 
@@ -133,7 +261,7 @@ export default function VisionArchivePage() {
       ) : (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {images.map((img, index) => (
-            <div key={img.id} className="flex flex-col overflow-hidden transition-all border shadow-md bg-slate-900 rounded-xl border-slate-800 group hover:border-slate-700">
+            <div key={img.id} onClick={() => handleImageSelect(img.id)} className="relative flex flex-col overflow-hidden transition-all border shadow-md cursor-pointer bg-slate-900 rounded-xl group hover:border-emerald-500/50" style={{ borderColor: selectedImages.includes(img.id) ? 'rgb(16 185 129)' : '#334155' }}>
               
               {/* AREA FOTO JPEG DARI SERVER */}
               <div className="relative overflow-hidden bg-black border-b aspect-video border-slate-800">
@@ -146,12 +274,22 @@ export default function VisionArchivePage() {
                   priority={index < 4} // Prioritaskan pemuatan 4 gambar pertama
                 />
                 
+                {/* CHECKBOX SELEKSI */}
+                <div className="absolute z-10 top-2 left-2">
+                  <input
+                    type="checkbox"
+                    className="w-5 h-5 rounded bg-slate-900/50 border-slate-500 text-emerald-500 focus:ring-emerald-500 focus:ring-2"
+                    checked={selectedImages.includes(img.id)}
+                    readOnly
+                  />
+                </div>
+
                 {/* LENCANA STATUS LABEL AKTIF */}
-                <div className="absolute top-2 right-2">
+                <div className="absolute z-10 top-2 right-2">
                   <span className={`px-2 py-1 text-[10px] font-black uppercase rounded tracking-wider shadow-md
                     ${img.manual_label === 'UNLABELED' && 'bg-amber-500 text-slate-950'}
                     ${img.manual_label === 'HAMA' && 'bg-rose-500 text-white animate-pulse'}
-                    ${img.manual_label === 'NORMAL' && 'bg-emerald-500 text-slate-950'}
+                    ${img.manual_label === 'BUKAN HAMA' && 'bg-emerald-500 text-slate-950'}
                     ${img.manual_label === 'BURAM' && 'bg-slate-700 text-slate-200'}
                   `}>
                     {img.manual_label}
@@ -163,7 +301,7 @@ export default function VisionArchivePage() {
               <div className="flex flex-col justify-between flex-1 p-4 space-y-4">
                 <div className="space-y-1 font-mono text-xs text-slate-400">
                   <p className="font-bold text-slate-500">ID BERKAS: #{img.id}</p>
-                  <p>Waktu: {new Date(img.waktu_tangkap).toLocaleString('id-ID')}</p>
+                  <p>Waktu: {new Date(img.waktu_tangkap).toISOString().replace('T', ' ').replace('.000Z', '')}</p>
                   <p>Ukuran: <span className="text-slate-300">{img.file_size_kb} KB</span></p>
                 </div>
 
@@ -174,7 +312,7 @@ export default function VisionArchivePage() {
                   </p>
                   <div className="grid grid-cols-3 gap-1">
                     <button
-                      onClick={() => handleApplyLabel(img.id, 'HAMA')}
+                      onClick={(e) => { e.stopPropagation(); handleApplyLabel(img.id, 'HAMA'); }}
                       className={`py-1 rounded text-[10px] font-extrabold border transition-all
                         ${img.manual_label === 'HAMA' 
                           ? 'bg-rose-950/40 border-rose-500 text-rose-400 shadow-md shadow-rose-500/10' 
@@ -183,16 +321,16 @@ export default function VisionArchivePage() {
                       HAMA
                     </button>
                     <button
-                      onClick={() => handleApplyLabel(img.id, 'NORMAL')}
+                      onClick={(e) => { e.stopPropagation(); handleApplyLabel(img.id, 'BUKAN HAMA'); }}
                       className={`py-1 rounded text-[10px] font-extrabold border transition-all
-                        ${img.manual_label === 'NORMAL' 
+                        ${img.manual_label === 'BUKAN HAMA' 
                           ? 'bg-emerald-950/40 border-emerald-500 text-emerald-400 shadow-md shadow-emerald-500/10' 
                           : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-emerald-500/40 hover:text-emerald-400'}`}
                     >
-                      NORMAL
+                      BUKAN HAMA
                     </button>
                     <button
-                      onClick={() => handleApplyLabel(img.id, 'BURAM')}
+                      onClick={(e) => { e.stopPropagation(); handleApplyLabel(img.id, 'BURAM'); }}
                       className={`py-1 rounded text-[10px] font-extrabold border transition-all
                         ${img.manual_label === 'BURAM' 
                           ? 'bg-slate-800 border-slate-500 text-slate-200' 

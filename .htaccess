@@ -1,21 +1,27 @@
 # ==============================================================================
-# AGROSYNC - MASTER APACHE CONFIG (UNIFIED ARCHITECTURE)
+# AGROSYNC - NEXT.JS STATIC EXPORT & PASSENGER BYPASS
 # ==============================================================================
 <IfModule mod_rewrite.c>
-  RewriteEngine On
+RewriteEngine On
 
-  # 1. PENGECUALIAN ABSOLUT UNTUK PASSENGER
-  # Jangan sentuh apapun yang menuju ke /api. Biarkan Passenger di folder anak mengambil alih.
-  RewriteCond %{REQUEST_URI} ^/api/ [NC]
-  RewriteRule ^ - [L]
+# [PERBAIKAN WEBSOCKET v2] Aturan yang lebih spesifik untuk menonaktifkan kompresi & buffering Apache.
+# Ini adalah upaya terakhir untuk mengatasi korupsi frame oleh reverse proxy.
+RewriteCond %{REQUEST_URI} ^/api/log-stream [NC]
+RewriteCond %{HTTP:Upgrade} websocket [NC]
+RewriteRule .* - [E=no-gzip:1,E=nokeepalive:1]
 
-  # 2. LOGIKA NEXT.JS SSG
-  # Jika fail atau direktori statis ada, sajikan langsung.
-  RewriteCond %{REQUEST_FILENAME} -f [OR]
-  RewriteCond %{REQUEST_FILENAME} -d
-  RewriteRule ^ - [L]
+# 1. PENGECUALIAN ABSOLUT UNTUK PASSENGER
+# Jangan sentuh apapun yang menuju ke /api. Biarkan Passenger mengambil alih.
+RewriteCond %{REQUEST_URI} ^/api/ [NC]
+RewriteRule ^ - [L]
 
-  # Jika halaman .html yang cocok ada, lakukan rewrite internal tanpa mengubah URL browser
-  RewriteCond %{REQUEST_FILENAME}.html -f
-  RewriteRule ^(.*)$ $1.html [L]
+# 2. LOGIKA NEXT.JS SSG
+# Jika fail atau direktori statis ada, sajikan langsung.
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Jika halaman .html ada, lakukan rewrite internal tanpa mengubah URL browser
+RewriteCond %{REQUEST_FILENAME}.html -f
+RewriteRule ^(.*)$ $1.html [L]
 </IfModule>

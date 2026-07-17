@@ -1,74 +1,144 @@
 # 🌾 AGROSYNC CORE SYSTEM
 **Sistem Pemantauan Mikroklimat & Gateway Visi Edge Terdistribusi**
 
-Repositori ini memuat infrastruktur perangkat lunak pusat (Peladen Backend, Dasbor Frontend, dan Ekstraktor Dataset) untuk proyek Internet of Things (IoT) Agrosync. Sistem ini dirancang untuk menerima telemetri asinkron dan matriks gambar biner (JPEG) dari mikrokontroler Edge (NodeMCU & ESP32-CAM) di lingkungan pertanian *Green House*.
+Repositori ini adalah pusat dari proyek Agrosync, sebuah platform Internet of Things (IoT) yang dirancang untuk memantau kondisi mikroklimat dan visual di lingkungan pertanian. Sistem ini terdiri dari backend Node.js yang andal, dasbor frontend Next.js yang interaktif, dan skrip Python untuk ekstraksi data.
 
 ---
 
-## ⚠️ PRASYARAT ABSOLUT (Sistem Kebutuhan)
-Sebelum Anda menjalankan proyek ini, pastikan mesin komputasi Anda telah terinstal tumpukan teknologi (Tech Stack) berikut:
-* **Node.js** (Minimal v18.x Lts)
-* **Python** (Minimal v3.10)
-* **MySQL Server** (Dapat menggunakan XAMPP, Laragon, atau MySQL murni)
-* **Git** (Untuk manajemen repositori)
+## 🏛️ Arsitektur Sistem
+
+Sistem ini dirancang dengan arsitektur terpadu (unified) untuk kemudahan deployment di lingkungan hosting seperti cPanel, di mana frontend dan backend berada di bawah satu domain.
+
+```
+                 +--------------------------------------+
+                 |  https://agrosync.analyzer.web.id    |
+                 +--------------------------------------+
+                              |          ^
+                              |          | (HTML/JS/CSS)
+                              v          |
+                 +--------------------------------------+
+                 |         PENGGUNA (Browser)           |
+                 +--------------------------------------+
+                              |          ^
+            (Fetch ke /api/...) |          | (Respons JSON)
+                              v          |
+                 +--------------------------------------+
+                 | .htaccess (Apache Reverse Proxy)     |
+                 |  - Meneruskan /api/* ke Node.js      |
+                 |  - Menyajikan file statis lainnya    |
+                 +--------------------------------------+
+                              |
+                              v
+                 +--------------------------------------+
+                 |   Aplikasi Node.js (api/server.js)   |
+                 |   - Terhubung ke Database MySQL      |
+                 |   - Menyimpan gambar ke /uploads/    |
+                 +--------------------------------------+
+```
 
 ---
 
-## 🛠️ PANDUAN INSTALASI & EKSEKUSI (Langkah-demi-Langkah)
+##  Tumpukan Teknologi (Tech Stack)
 
-### FASE 1: Imigrasi Basis Data (MySQL)
-Sistem ini tidak akan berjalan tanpa struktur tabel yang valid.
-1. Nyalakan layanan **MySQL** pada mesin Anda (via XAMPP Control Panel atau sejenisnya).
-2. Buka antarmuka manajemen (contoh: `http://localhost/phpmyadmin`).
-3. Buat sebuah basis data baru dengan nama persis: `agrosync_db`.
-4. Pastikan Anda mengeksekusi skema tabel untuk tabel `mikroklimat`, `visi_edge`, dan `command_queue` sesuai arsitektur IoT.
-
-### FASE 2: Inisiasi Peladen (Backend Engine)
-Proyek ini menggunakan arsitektur hybrid yang dirancang untuk cPanel: backend Express.js dan frontend statis Next.js.
-
-1. Buka terminal (CMD/GitBash).
-2. Navigasi ke direktori root proyek: `cd Agrosync-Core`
-3. Instal seluruh dependensi: `npm install`
-4. **KONFIGURASI WAJIB (Database & API):**
-   - Salin file `.env.example` menjadi file baru bernama `.env.local`.
-   - Sesuaikan isinya dengan konfigurasi MySQL dan port lokal Anda:
-     ```dotenv
-     # ===================================
-     # CONTOH UNTUK PENGEMBANGAN LOKAL
-     # ===================================
-     # Konfigurasi Database (untuk server.js & extractor.py)
-     DB_HOST=localhost
-     DB_USER=root
-     DB_PASSWORD=
-     DB_NAME=agrosync_db
- 
-     # URL untuk API & Frontend
-     NEXT_PUBLIC_API_URL=http://localhost:3001
-     FRONTEND_URL=http://localhost:3000
-
-     # Kunci API untuk otentikasi perangkat keras (ESP32/NodeMCU)
-     # Buat string acak yang kuat untuk ini di produksi.
-     HARDWARE_API_KEY=kunci_rahasia_anda_disini
-     ```
-   - **CATATAN PENTING UNTUK PRODUKSI (CPANEL):** Di lingkungan cPanel, variabel-variabel ini (terutama `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `FRONTEND_URL`, `NEXT_PUBLIC_API_URL`) harus diatur melalui menu **"Setup Node.js App" -> "Environment Variables"**, bukan dari file `.env.local`.
-
-5. **Jalankan Proyek Pengembangan (Backend & Frontend Secara Bersamaan):**
-     ```bash
-     npm run dev
-     ```
-   - *(Akses dasbor frontend di `http://localhost:3000` dan server API di `http://localhost:3001`)*
-
-### FASE 3: Ekstraksi Anotasi Dataset (Python Core)
-Skrip jembatan antara kurasi manusia di Dasbor menuju format MLOps (YOLOv8).
-1. Buka terminal (CMD/GitBash).
-2. Pastikan dependensi Python terpasang: `pip install mysql-connector-python python-dotenv requests`
-3. Pastikan file `.env.local` dari FASE 2 sudah dibuat. Skrip akan otomatis membaca kredensial dari sana.
-4. Eksekusi program dari direktori root: `python extractor.py`
+| Komponen | Teknologi | Deskripsi |
+| :--- | :--- | :--- |
+| **Frontend** | Next.js (Static Export), React, TailwindCSS, Recharts | Antarmuka pengguna yang cepat dan interaktif untuk visualisasi data. |
+| **Backend** | Node.js, Express.js | API server yang menangani logika bisnis, otentikasi, dan interaksi database. |
+| **Database** | MySQL | Penyimpanan data telemetri, metadata gambar, dan antrean perintah. |
+| **Ekstraktor** | Python, Requests, python-dotenv | Skrip untuk menarik dataset gambar dari server untuk keperluan MLOps. |
+| **Deployment** | cPanel, Apache, Phusion Passenger | Lingkungan hosting untuk menjalankan aplikasi Node.js dan menyajikan web statis. |
 
 ---
 
-## 🛑 DIAGNOSTIK MASALAH (Troubleshooting)
+## 🛠️ Panduan Instalasi & Eksekusi Lokal
 
-* **Dasbor Tidak Memuat Data:** Pastikan kedua server berjalan (`npm run dev`). Cek file `.env.local` dan pastikan `NEXT_PUBLIC_API_URL` menunjuk ke port yang benar (default: 3001).
-* **Galat `mysqld_stmt_execute`:** Gunakan XAMPP/MySQL versi stabil. Jika membandel, pastikan fungsi penarikan data masif menggunakan `db.query()` dan bukan `db.execute()`.
-* **Peringatan `Hydration Mismatch` (Next.js):** Peringatan zona waktu ini telah dimitigasi dengan `suppressHydrationWarning`.
+### 1. Prasyarat
+Pastikan perangkat lunak berikut telah terinstal di mesin Anda:
+- **Node.js** (v18.x atau lebih tinggi)
+- **Python** (v3.10 atau lebih tinggi)
+- **MySQL Server** (misalnya melalui XAMPP, Laragon)
+- **Git**
+
+### 2. Inisialisasi Proyek
+
+1.  **Kloning Repositori:**
+    ```bash
+    git clone <URL_REPOSITORI_ANDA>
+    cd Agrosync-Core
+    ```
+2.  **Instal Dependensi:**
+    - Instal dependensi frontend:
+    ```bash
+    npm install
+    ```
+    - Instal dependensi backend dan buat `package-lock.json` yang benar:
+    ```bash
+    cd api && npm install && cd ..
+    ```
+3.  **Setup Database:**
+    - Nyalakan server MySQL Anda.
+    - Buat database baru dengan nama `agrosync_db`.
+    - Impor skema tabel dari file `skema_database.sql` (atau yang serupa) untuk membuat tabel `mikroklimat`, `visi_edge`, dan `command_queue`.
+
+### 3. Konfigurasi Lingkungan
+Salin file `.env.example` menjadi `.env.local` dan sesuaikan dengan konfigurasi lokal Anda.
+
+```dotenv
+# .env.local - Konfigurasi untuk Pengembangan Lokal
+
+# Konfigurasi Database (untuk api/server.js & extractor.py)
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=
+DB_NAME=agrosync_db
+
+# URL untuk API & Frontend
+NEXT_PUBLIC_API_URL=
+FRONTEND_URL=http://localhost:3000
+
+# Kunci API untuk otentikasi perangkat keras (ESP32/NodeMCU)
+HARDWARE_API_KEY=kunci_rahasia_anda_disini
+```
+
+### 4. Menjalankan Aplikasi
+
+1.  **Jalankan Server Backend:** Buka terminal dan jalankan:
+    ```bash
+    node api/server.js
+    ```
+    Server API akan berjalan di `http://localhost:3001` (default).
+
+2.  **Jalankan Dasbor Frontend:** Buka terminal **kedua** dan jalankan:
+    ```bash
+    npm run dev
+    ```
+    Akses dasbor di `http://localhost:3000`.
+
+### 5. Ekstraksi Dataset (Python)
+Skrip ini digunakan untuk mengunduh gambar yang telah dilabeli dari dasbor untuk digunakan dalam pelatihan model Machine Learning.
+
+1.  **Instal Dependensi Python:**
+    ```bash
+    pip install requests python-dotenv
+    ```
+2.  **Jalankan Ekstraktor:**
+    Pastikan `.env.local` sudah dikonfigurasi.
+    ```bash
+    python extractor.py
+    ```
+
+---
+
+## 🚀 Panduan Deployment (cPanel)
+
+1.  **Build Frontend:** Atur `NEXT_PUBLIC_API_URL=/api` di `.env.local`, lalu jalankan `npm run build`.
+2.  **Unggah File:**
+    - Unggah isi folder `out/` ke `public_html/agrosync.analyzer.web.id/`.
+    - Buat folder `api/` di dalam `public_html/agrosync.analyzer.web.id/`.
+    - Unggah `api/server.js` dan `api/package.json` (file yang baru dibuat) ke dalam folder `api/` di server.
+3.  **Konfigurasi Node.js App di cPanel:**
+    - Atur *Application root* ke `public_html/agrosync.analyzer.web.id/api`.
+    - Atur *Application startup file* ke `server.js`.
+    - Jalankan "NPM Install".
+    - Atur semua *Environment Variables* produksi (kredensial DB, API Key, dll).
+4.  **Konfigurasi `.htaccess`:** Pastikan file `.htaccess` di root domain (`public_html/agrosync.analyzer.web.id/`) ada dan dikonfigurasi untuk menangani rute Next.js dan mengecualikan path `/api/`.

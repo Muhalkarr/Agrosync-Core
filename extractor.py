@@ -6,17 +6,21 @@ from dotenv import load_dotenv
 # Load konfigurasi dari .env.local
 load_dotenv('.env.local')
 
-# API Peladen Produksi
-API_URL = "https://agrosync.analyzer.web.id/api/vision/extract-mlops"
+# [PERBAIKAN] Ambil semua konfigurasi dari environment variables untuk konsistensi
 FRONTEND_URL = os.getenv("FRONTEND_URL", "https://agrosync.analyzer.web.id")
+API_KEY = os.getenv("HARDWARE_API_KEY")
+
+# [PERBAIKAN] Bangun URL API secara dinamis
+API_URL = f"{FRONTEND_URL.rstrip('/')}/api/vision/extract-mlops"
+
 EXPORT_DIR = "Agrosync_Curated_Dataset"
 
-# Injeksi Header Anti-WAF
-HEADERS_PALSU = {
+# [PERBAIKAN] Injeksi Header Otentikasi & User-Agent
+HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     'Accept': 'application/json, text/plain, */*',
-    'Accept-Encoding': 'gzip, deflate, br',
-    'Connection': 'keep-alive'
+    'Connection': 'keep-alive',
+    'x-api-key': API_KEY # Header otentikasi
 }
 
 def setup_directories():
@@ -28,10 +32,13 @@ def setup_directories():
 
 def fetch_and_download():
     print(f"[SYSTEM] Memanggil data dari API: {API_URL}")
+    if not API_KEY:
+        print("[FATAL ERROR] Variabel HARDWARE_API_KEY tidak ditemukan di .env.local. Skrip dihentikan.")
+        return
     
     try:
         # 1. Minta daftar gambar dari server Express
-        api_response = requests.get(API_URL, headers=HEADERS_PALSU, timeout=15)
+        api_response = requests.get(API_URL, headers=HEADERS, timeout=15)
         api_response.raise_for_status()
         dataset = api_response.json()
         
@@ -60,7 +67,7 @@ def fetch_and_download():
 
             # Unduh biner gambar
             try:
-                img_response = requests.get(full_image_url, stream=True, headers=HEADERS_PALSU, timeout=15)
+                img_response = requests.get(full_image_url, stream=True, headers=HEADERS, timeout=15)
                 if img_response.status_code == 200:
                     with open(dst_path, 'wb') as f:
                         shutil.copyfileobj(img_response.raw, f)
