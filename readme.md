@@ -77,7 +77,7 @@ Pastikan perangkat lunak berikut telah terinstal di mesin Anda:
     ```
 3.  **Setup Database:**
     - Nyalakan server MySQL Anda.
-    - Buat database baru dengan nama `agrosync_db`.
+    - Buat database baru dengan nama `analyzer_agrosync_local.sql`.
     - Impor skema tabel dari file `skema_database.sql` (atau yang serupa) untuk membuat tabel `mikroklimat`, `visi_edge`, dan `command_queue`.
 
 ### 3. Konfigurasi Lingkungan
